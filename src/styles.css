@@ -75,6 +75,24 @@ html[data-theme='light'] .border-slate-600 {
   border-color: #64748b;
 }
 
+html[data-theme='light'] .app-navigation-rail {
+  background-color: #dff7f4;
+  border-color: #8ddbd2;
+}
+
+html[data-theme='light'] .app-navigation-rail .border-slate-800,
+html[data-theme='light'] .app-navigation-rail .border-slate-700 {
+  border-color: #8ddbd2;
+}
+
+html[data-theme='light'] .app-navigation-rail .hover\:bg-slate-800:hover {
+  background-color: #bcebe5;
+}
+
+html[data-theme='light'] .app-navigation-rail select {
+  background-color: #f0fdfa;
+}
+
 html[data-theme='light']
   :where(
     .bg-emerald-950,

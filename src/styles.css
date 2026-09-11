@@ -1,3 +1,203 @@
 /* You can add global styles to this file, and also import other style files */
 
 @import 'tailwindcss';
+
+html,
+body {
+  background: #020617;
+}
+
+html[data-theme='light'],
+html[data-theme='light'] body {
+  background: #f8fafc;
+}
+
+html[data-theme='light']
+  :where(
+    .bg-slate-950,
+    [class~='bg-slate-950/70'],
+    [class~='bg-slate-950/60'],
+    [class~='bg-slate-950/50'],
+    [class~='bg-slate-950/45'],
+    [class~='bg-slate-950/40'],
+    [class~='bg-slate-950/30'],
+    [class~='bg-slate-950/25']
+  ) {
+  background-color: #f8fafc;
+}
+
+html[data-theme='light']
+  :where(
+    .bg-slate-900,
+    [class~='bg-slate-900/98'],
+    [class~='bg-slate-900/70'],
+    [class~='bg-slate-900/60']
+  ) {
+  background-color: #ffffff;
+}
+
+html[data-theme='light']
+  :where(
+    .bg-slate-800,
+    [class~='bg-slate-800/80'],
+    [class~='bg-slate-800/70'],
+    [class~='bg-slate-800/60'],
+    [class~='bg-slate-800/35']
+  ) {
+  background-color: #e2e8f0;
+}
+
+html[data-theme='light'] .bg-slate-700 {
+  background-color: #cbd5e1;
+}
+
+html[data-theme='light'] :where(.text-slate-100, .text-slate-200) {
+  color: #0f172a;
+}
+
+html[data-theme='light'] .text-slate-300 {
+  color: #334155;
+}
+
+html[data-theme='light'] :where(.text-slate-400, .text-slate-500, .text-slate-600) {
+  color: #475569;
+}
+
+html[data-theme='light'] .border-slate-800 {
+  border-color: #cbd5e1;
+}
+
+html[data-theme='light'] .border-slate-700 {
+  border-color: #94a3b8;
+}
+
+html[data-theme='light'] .border-slate-600 {
+  border-color: #64748b;
+}
+
+html[data-theme='light']
+  :where(
+    .bg-emerald-950,
+    [class~='bg-emerald-950/60'],
+    [class~='bg-emerald-950/50'],
+    [class~='bg-emerald-950/30'],
+    [class~='bg-emerald-950/25'],
+    [class~='bg-emerald-950/20']
+  ) {
+  background-color: #ecfdf5;
+}
+
+html[data-theme='light']
+  :where(
+    .bg-amber-950,
+    [class~='bg-amber-950/70'],
+    [class~='bg-amber-950/60'],
+    [class~='bg-amber-950/50'],
+    [class~='bg-amber-950/40'],
+    [class~='bg-amber-950/20'],
+    [class~='bg-amber-950/15']
+  ) {
+  background-color: #fffbeb;
+}
+
+html[data-theme='light'] :where(.bg-red-950, [class~='bg-red-950/70'], [class~='bg-red-950/60']) {
+  background-color: #fef2f2;
+}
+
+html[data-theme='light']
+  :where(
+    .bg-sky-950,
+    [class~='bg-sky-950/70'],
+    [class~='bg-sky-950/30'],
+    [class~='bg-sky-950/25'],
+    [class~='bg-sky-950/20']
+  ) {
+  background-color: #f0f9ff;
+}
+
+html[data-theme='light']
+  :where(.text-emerald-100, .text-emerald-200, .text-emerald-300, .text-emerald-400) {
+  color: #047857;
+}
+
+html[data-theme='light']
+  :where(.text-amber-100, .text-amber-200, .text-amber-300, .text-amber-400) {
+  color: #92400e;
+}
+
+html[data-theme='light'] :where(.text-red-100, .text-red-200, .text-red-300, .text-red-400) {
+  color: #b91c1c;
+}
+
+html[data-theme='light'] :where(.text-sky-200, .text-sky-300, .text-sky-400) {
+  color: #0369a1;
+}
+
+html[data-theme='light']
+  :where(
+    .hover\:bg-slate-800:hover,
+    .hover\:bg-slate-900:hover,
+    .hover\:bg-slate-700:hover,
+    [class~='hover:bg-slate-800/70']:hover,
+    [class~='hover:bg-slate-800/60']:hover,
+    [class~='hover:bg-slate-800/35']:hover
+  ) {
+  background-color: #e2e8f0;
+}
+
+html[data-theme='light'] :where(.hover\:text-slate-100:hover, .hover\:text-slate-200:hover) {
+  color: #0f172a;
+}
+
+html[data-theme='light']
+  :where(.hover\:bg-emerald-950:hover, .hover\:bg-amber-950:hover, .hover\:bg-sky-950:hover) {
+  background-color: #e2e8f0;
+}
+
+html[data-theme='light']
+  :where(.hover\:text-emerald-300:hover, .hover\:text-amber-200:hover, .hover\:text-sky-200:hover) {
+  color: #0f172a;
+}
+
+html[data-theme='high-contrast'],
+html[data-theme='high-contrast'] body {
+  background: #000000;
+}
+
+html[data-theme='high-contrast']
+  :where(
+    .bg-slate-950,
+    [class~='bg-slate-950/70'],
+    [class~='bg-slate-950/60'],
+    [class~='bg-slate-950/50'],
+    [class~='bg-slate-950/45'],
+    [class~='bg-slate-950/40'],
+    [class~='bg-slate-950/30'],
+    [class~='bg-slate-950/25']
+  ) {
+  background-color: #000000;
+}
+
+html[data-theme='high-contrast']
+  :where(
+    .bg-slate-900,
+    [class~='bg-slate-900/98'],
+    [class~='bg-slate-900/70'],
+    [class~='bg-slate-900/60']
+  ) {
+  background-color: #0a0a0a;
+}
+
+html[data-theme='high-contrast']
+  :where(.text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500) {
+  color: #ffffff;
+}
+
+html[data-theme='high-contrast'] :where(.border-slate-800, .border-slate-700, .border-slate-600) {
+  border-color: #9ca3af;
+}
+
+html[data-theme='high-contrast'] :focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 2px;
+}

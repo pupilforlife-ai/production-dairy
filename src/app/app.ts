@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { environment } from '../environment';
+import { ThemeService } from './core/theme/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -10,4 +11,8 @@ import { environment } from '../environment';
 })
 export class App {
   readonly betaMode = environment.betaMode;
+
+  constructor() {
+    inject(ThemeService);
+  }
 }

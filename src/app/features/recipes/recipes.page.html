@@ -1,0 +1,410 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 px-5 py-8 text-slate-100">
+  <div class="mx-auto max-w-7xl">
+    <a class="text-sm font-semibold text-emerald-400 hover:text-emerald-300" routerLink="/"
+      >← Factory workspace</a
+    >
+    <header class="mt-5 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+          Owner administration
+        </p>
+        <h1 class="mt-2 text-3xl font-bold">Recipe management</h1>
+        <p class="mt-2 max-w-2xl text-slate-400">
+          Versioned formulas with proportional scaling. Historical versions remain unchanged.
+        </p>
+      </div>
+      <button
+        class="rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400"
+        type="button"
+        (click)="toggleCreateForm()"
+      >
+        {{ showCreateForm() ? 'Cancel' : 'Add recipe' }}
+      </button>
+    </header>
+
+    @if (errorMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+    @if (successMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-emerald-900 bg-emerald-950/60 px-4 py-3 text-emerald-200"
+        role="status"
+      >
+        {{ successMessage() }}
+      </p>
+    }
+
+    @if (showCreateForm()) {
+      <form
+        class="mt-6 rounded-2xl border border-emerald-900 bg-slate-900 p-5 sm:p-6"
+        [formGroup]="createForm"
+        (ngSubmit)="createRecipe()"
+      >
+        <div>
+          <h2 class="text-xl font-bold">Create a new recipe</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            This creates a confidential recipe and its first permanent version.
+          </p>
+        </div>
+
+        <div class="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <label class="lg:col-span-2">
+            <span class="mb-1 block text-sm font-medium">Recipe product</span>
+            <select
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="productId"
+            >
+              <option value="">Select any active product</option>
+              @for (product of products(); track product.id) {
+                <option [value]="product.id">
+                  {{ product.name }} · {{ product.code }} · {{ product.product_type }}
+                </option>
+              }
+            </select>
+          </label>
+          <label class="lg:col-span-2">
+            <span class="mb-1 block text-sm font-medium">Recipe name</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="name"
+              placeholder="Example: Standard SPP coating"
+            />
+          </label>
+          <label>
+            <span class="mb-1 block text-sm font-medium">Effective from</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="date"
+              formControlName="effectiveFrom"
+            />
+          </label>
+          <label class="lg:col-span-2">
+            <span class="mb-1 block text-sm font-medium">Base batch quantity</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="number"
+              min="0.001"
+              step="0.001"
+              formControlName="basisQuantity"
+            />
+          </label>
+          <label>
+            <span class="mb-1 block text-sm font-medium">Base unit</span>
+            <select
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="basisUomId"
+            >
+              <option value="">Select unit</option>
+              @for (unit of units(); track unit.id) {
+                <option [value]="unit.id">{{ unit.code }} — {{ unit.name }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        <section class="mt-7 border-t border-slate-800 pt-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="font-bold">Recipe components</h3>
+              <p class="mt-1 text-sm text-slate-400">
+                Each row can use an ingredient or another intermediate product.
+              </p>
+            </div>
+            <button
+              class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-800"
+              type="button"
+              (click)="addComponent()"
+            >
+              + Add component
+            </button>
+          </div>
+
+          <div class="mt-4 space-y-3" formArrayName="components">
+            @for (row of components.controls; track row; let index = $index) {
+              <div
+                class="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/40 p-4 md:grid-cols-2 lg:grid-cols-[0.8fr_2fr_0.8fr_0.8fr_0.8fr_0.8fr_auto]"
+                [formGroupName]="index"
+              >
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Type</span>
+                  <select
+                    #typeSelect
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="type"
+                    (change)="changeComponentType(index, typeSelect.value)"
+                  >
+                    <option value="ingredient">Ingredient</option>
+                    <option value="product">Product</option>
+                  </select>
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500"
+                    >Component</span
+                  >
+                  <select
+                    #materialSelect
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="materialId"
+                    (change)="selectComponentMaterial(index, materialSelect.value)"
+                  >
+                    <option value="">Select component</option>
+                    @if (row.controls.type.value === 'ingredient') {
+                      @for (ingredient of ingredients(); track ingredient.id) {
+                        <option [value]="ingredient.id">
+                          {{ ingredient.name }} ({{ ingredient.code }})
+                        </option>
+                      }
+                    } @else {
+                      @for (product of availableProductComponents(); track product.id) {
+                        <option [value]="product.id">
+                          {{ product.name }} ({{ product.code }})
+                        </option>
+                      }
+                    }
+                  </select>
+                  @if (row.controls.type.value === 'ingredient') {
+                    <button
+                      class="mt-2 text-xs font-bold text-emerald-400 hover:text-emerald-300"
+                      type="button"
+                      (click)="openNewIngredient(index)"
+                    >
+                      + Ingredient not listed? Add it
+                    </button>
+                  }
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500"
+                    >Quantity</span
+                  >
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    type="number"
+                    min="0.001"
+                    step="0.001"
+                    formControlName="quantity"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Unit</span>
+                  <select
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="uomId"
+                  >
+                    <option value="">Unit</option>
+                    @for (unit of units(); track unit.id) {
+                      <option [value]="unit.id">{{ unit.code }}</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Minimum</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    formControlName="toleranceMin"
+                    placeholder="Optional"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Maximum</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    formControlName="toleranceMax"
+                    placeholder="Optional"
+                  />
+                </label>
+                <button
+                  class="self-end rounded-lg border border-red-900 px-3 py-2 text-sm text-red-300 disabled:opacity-40"
+                  type="button"
+                  [disabled]="components.length === 1"
+                  (click)="removeComponent(index)"
+                >
+                  Remove
+                </button>
+              </div>
+            }
+          </div>
+
+          @if (newIngredientForIndex() !== null) {
+            <div
+              class="mt-4 rounded-xl border border-sky-900 bg-sky-950/30 p-4"
+              [formGroup]="newIngredientForm"
+            >
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h4 class="font-bold">Add a new ingredient</h4>
+                  <p class="mt-1 text-sm text-slate-400">
+                    It will also be added to ingredient inventory and selected in this recipe row.
+                  </p>
+                </div>
+                <button
+                  class="text-sm font-bold text-slate-400 hover:text-slate-200"
+                  type="button"
+                  (click)="cancelNewIngredient()"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div class="mt-4 grid gap-3 md:grid-cols-[1fr_2fr_1fr_1.4fr_auto] md:items-end">
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Code</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 uppercase"
+                    formControlName="code"
+                    placeholder="Example: SALT"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Name</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="name"
+                    placeholder="Ingredient name"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500"
+                    >Default unit</span
+                  >
+                  <select
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="uomId"
+                  >
+                    <option value="">Select unit</option>
+                    @for (unit of units(); track unit.id) {
+                      <option [value]="unit.id">{{ unit.code }} — {{ unit.name }}</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500"
+                    >Added at</span
+                  >
+                  <select
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="additionStage"
+                  >
+                    <option value="processing_vat">VAT 2 / VAT 3</option>
+                    <option value="coagulation">Coagulation tank</option>
+                  </select>
+                </label>
+                <button
+                  class="rounded-lg bg-sky-500 px-4 py-2 font-bold text-slate-950 hover:bg-sky-400 disabled:opacity-50"
+                  type="button"
+                  [disabled]="savingIngredient()"
+                  (click)="createIngredient()"
+                >
+                  {{ savingIngredient() ? 'Adding…' : 'Add ingredient' }}
+                </button>
+              </div>
+            </div>
+          }
+        </section>
+
+        <div
+          class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-5"
+        >
+          <p class="text-sm text-slate-400">
+            Recipe quantities are private and visible only to authorized Owners.
+          </p>
+          <button
+            class="rounded-xl bg-emerald-500 px-5 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+            type="submit"
+            [disabled]="saving()"
+          >
+            {{ saving() ? 'Creating…' : 'Create Recipe Version 1' }}
+          </button>
+        </div>
+      </form>
+    }
+
+    @if (loading()) {
+      <p class="mt-10 text-slate-400">Loading recipes…</p>
+    } @else {
+      <section class="mt-10 space-y-5">
+        @for (recipe of recipes(); track recipe.id) {
+          @let version = currentVersion(recipe);
+          <article class="rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <h2 class="text-xl font-bold">{{ recipe.name }}</h2>
+                  @if (recipe.confidential) {
+                    <span
+                      class="rounded-full bg-amber-950 px-2.5 py-1 text-xs font-bold text-amber-300"
+                      >Confidential</span
+                    >
+                  }
+                </div>
+                <p class="mt-1 text-sm text-slate-400">
+                  {{ recipe.products?.name }} · Version {{ version?.version_number }}
+                </p>
+              </div>
+              @if (version) {
+                <label class="block">
+                  <span
+                    class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+                    >Requested basis ({{ version.units_of_measure?.code }})</span
+                  >
+                  <input
+                    class="w-40 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-right outline-none focus:border-emerald-500"
+                    type="number"
+                    min="0.001"
+                    step="0.1"
+                    [value]="requestedQuantities()[recipe.id]"
+                    (input)="updateRequestedQuantity(recipe.id, $event)"
+                  />
+                </label>
+              }
+            </div>
+
+            @if (version) {
+              <div class="mt-5 overflow-hidden rounded-xl border border-slate-800">
+                <div
+                  class="grid grid-cols-[1fr_auto] bg-slate-950 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-500"
+                >
+                  <span>Component</span><span>Scaled quantity</span>
+                </div>
+                @for (component of version.recipe_components; track component.id) {
+                  <div class="grid grid-cols-[1fr_auto] border-t border-slate-800 px-4 py-3">
+                    <span class="font-medium">
+                      {{ component.ingredients?.name || component.products?.name }}
+                      @if (component.ingredients) {
+                        <small class="ml-2 text-slate-500">
+                          {{ additionStageLabel(component.ingredients.addition_stage) }}
+                        </small>
+                      }
+                    </span>
+                    <span class="font-mono text-emerald-300"
+                      >{{ scaledQuantity(recipe, component.quantity).toFixed(3) }}
+                      {{ component.units_of_measure?.code }}</span
+                    >
+                  </div>
+                }
+              </div>
+              <p class="mt-3 text-xs text-slate-500">
+                Base formula: {{ version.basis_quantity }} {{ version.units_of_measure?.code }} ·
+                Effective {{ version.effective_from }}
+              </p>
+            } @else {
+              <p class="mt-5 text-amber-300">No recipe version has been configured.</p>
+            }
+          </article>
+        } @empty {
+          <p class="text-slate-400">No recipes have been configured.</p>
+        }
+      </section>
+    }
+  </div>
+</main>

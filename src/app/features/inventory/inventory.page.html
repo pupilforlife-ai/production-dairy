@@ -1,0 +1,578 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 px-4 py-7 text-slate-100 sm:px-6">
+  <div class="mx-auto max-w-7xl">
+    <a class="text-sm font-semibold text-emerald-400 hover:text-emerald-300" routerLink="/"
+      >← Factory workspace</a
+    >
+    <header class="mt-5">
+      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+        Immutable stock ledger
+      </p>
+      <h1 class="mt-2 text-3xl font-bold">Ingredient and packaging inventory</h1>
+      <p class="mt-2 max-w-3xl text-slate-400">
+        Receive into bulk storage, replenish the intermediate store, and record production or
+        packing consumption. Balances are calculated from transactions and cannot be edited
+        directly.
+      </p>
+    </header>
+
+    <div class="mt-6 flex flex-wrap gap-2">
+      @if (auth.hasRole('owner')) {
+        <button
+          class="rounded-xl border border-slate-700 px-4 py-3 font-bold"
+          type="button"
+          (click)="toggleAction('item')"
+        >
+          + Inventory item
+        </button>
+      }
+      <button
+        class="rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950"
+        type="button"
+        (click)="toggleAction('receive')"
+      >
+        Receive stock
+      </button>
+      <button
+        class="rounded-xl border border-sky-800 px-4 py-3 font-bold text-sky-200"
+        type="button"
+        [disabled]="balances().length === 0"
+        (click)="toggleAction('transfer')"
+      >
+        Transfer stock
+      </button>
+      <button
+        class="rounded-xl border border-amber-800 px-4 py-3 font-bold text-amber-200"
+        type="button"
+        [disabled]="balances().length === 0"
+        (click)="toggleAction('consume')"
+      >
+        Record consumption
+      </button>
+      @if (auth.hasRole('owner')) {
+        <button
+          class="rounded-xl border border-violet-800 px-4 py-3 font-bold text-violet-200"
+          type="button"
+          [disabled]="balances().length === 0"
+          (click)="toggleAction('adjust')"
+        >
+          Stocktake adjustment
+        </button>
+      }
+    </div>
+
+    @if (errorMessage()) {
+      <p
+        class="mt-5 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+    @if (successMessage()) {
+      <p
+        class="mt-5 rounded-xl border border-emerald-900 bg-emerald-950/60 px-4 py-3 text-emerald-200"
+        role="status"
+      >
+        {{ successMessage() }}
+      </p>
+    }
+
+    @if (activeAction() === 'item') {
+      <form
+        class="mt-5 grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 md:grid-cols-4"
+        [formGroup]="itemForm"
+        (ngSubmit)="createItem()"
+      >
+        <div class="md:col-span-4">
+          <h2 class="text-xl font-bold">Add inventory item</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            Ingredient items also become available to recipe master data.
+          </p>
+        </div>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Type</span
+          ><select
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="itemType"
+          >
+            <option value="ingredient">Ingredient</option>
+            <option value="packaging">Packaging</option>
+          </select></label
+        >
+        <label
+          ><span class="mb-1 block text-sm font-medium">Code</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="code"
+            placeholder="e.g. MPAN400_WRAPPER"
+        /></label>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Name</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="name"
+        /></label>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Default unit</span
+          ><select
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="uomId"
+          >
+            <option value="">Select unit</option>
+            @for (unit of units(); track unit.id) {
+              <option [value]="unit.id">{{ unit.code }} — {{ unit.name }}</option>
+            }
+          </select></label
+        >
+        <button
+          class="rounded-lg bg-emerald-500 px-4 py-2 font-bold text-slate-950 disabled:opacity-50 md:col-span-4 md:w-fit"
+          type="submit"
+          [disabled]="saving()"
+        >
+          Add item
+        </button>
+      </form>
+    }
+
+    @if (activeAction() === 'receive') {
+      <form
+        class="mt-5 grid gap-4 rounded-2xl border border-emerald-900 bg-slate-900 p-5 md:grid-cols-2 lg:grid-cols-4"
+        [formGroup]="receiveForm"
+        (ngSubmit)="receive()"
+      >
+        <div class="md:col-span-2 lg:col-span-4">
+          <h2 class="text-xl font-bold">Receive inventory</h2>
+        </div>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Item</span
+          ><select
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="itemId"
+          >
+            <option value="">Select item</option>
+            @for (item of items(); track item.id) {
+              <option [value]="item.id">
+                {{ item.item_type === 'packaging' ? 'Packaging · ' : 'Ingredient · '
+                }}{{ item.name }} ({{ item.units_of_measure?.code }})
+              </option>
+            }
+          </select></label
+        >
+        <label
+          ><span class="mb-1 block text-sm font-medium">Supplier lot code</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="lotCode"
+        /></label>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Quantity</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="number"
+            min="0.001"
+            step="0.1"
+            formControlName="quantity"
+        /></label>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Receiving location</span
+          ><select
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="destinationLocationId"
+          >
+            <option value="">Select location</option>
+            @for (location of locations(); track location.id) {
+              <option [value]="location.id">{{ location.name }}</option>
+            }
+          </select></label
+        >
+        <label
+          ><span class="mb-1 block text-sm font-medium">Received at</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="datetime-local"
+            formControlName="receivedAt"
+        /></label>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Expiry date (optional)</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="date"
+            formControlName="expiryDate"
+        /></label>
+        <label class="md:col-span-2"
+          ><span class="mb-1 block text-sm font-medium">Notes</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="notes"
+        /></label>
+        <button
+          class="rounded-lg bg-emerald-500 px-4 py-2 font-bold text-slate-950 disabled:opacity-50 md:col-span-2 lg:col-span-4 lg:w-fit"
+          type="submit"
+          [disabled]="saving()"
+        >
+          Record receipt
+        </button>
+      </form>
+    }
+
+    @if (activeAction() === 'transfer') {
+      <form
+        class="mt-5 grid gap-4 rounded-2xl border border-sky-900 bg-slate-900 p-5 md:grid-cols-2 lg:grid-cols-4"
+        [formGroup]="transferForm"
+        (ngSubmit)="transfer()"
+      >
+        <div class="md:col-span-2 lg:col-span-4">
+          <h2 class="text-xl font-bold">Transfer inventory</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            Typical route: Bulk Store → Intermediate Ingredient Store.
+          </p>
+        </div>
+        <label class="md:col-span-2"
+          ><span class="mb-1 block text-sm font-medium">Source stock</span
+          ><select
+            #transferBalance
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="balanceKey"
+            (change)="selectTransferBalance(transferBalance.value)"
+          >
+            <option value="">Select lot and location</option>
+            @for (balance of balances(); track keyForBalance(balance)) {
+              <option [value]="keyForBalance(balance)">
+                {{ balance.item_name }} · {{ balance.lot_code }} · {{ balance.location_name }} ·
+                {{ balance.current_quantity }} {{ balance.uom_code }}
+              </option>
+            }
+          </select></label
+        >
+        <label
+          ><span class="mb-1 block text-sm font-medium">Quantity</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="number"
+            min="0.001"
+            step="0.1"
+            formControlName="quantity"
+        /></label>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Destination</span
+          ><select
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="destinationLocationId"
+          >
+            <option value="">Select location</option>
+            @for (location of locations(); track location.id) {
+              <option [value]="location.id">{{ location.name }}</option>
+            }
+          </select></label
+        >
+        <label
+          ><span class="mb-1 block text-sm font-medium">Occurred at</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="datetime-local"
+            formControlName="occurredAt"
+        /></label>
+        <label class="md:col-span-2"
+          ><span class="mb-1 block text-sm font-medium">Notes</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="notes"
+        /></label>
+        <button
+          class="rounded-lg bg-sky-500 px-4 py-2 font-bold text-slate-950 disabled:opacity-50 lg:self-end"
+          type="submit"
+          [disabled]="saving()"
+        >
+          Record transfer
+        </button>
+      </form>
+    }
+
+    @if (activeAction() === 'consume') {
+      <form
+        class="mt-5 grid gap-4 rounded-2xl border border-amber-900 bg-slate-900 p-5 md:grid-cols-2 lg:grid-cols-4"
+        [formGroup]="consumeForm"
+        (ngSubmit)="consume()"
+      >
+        <div class="md:col-span-2 lg:col-span-4">
+          <h2 class="text-xl font-bold">Record production or packing consumption</h2>
+        </div>
+        <label class="md:col-span-2"
+          ><span class="mb-1 block text-sm font-medium">Source stock</span
+          ><select
+            #consumeBalance
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="balanceKey"
+            (change)="selectConsumeBalance(consumeBalance.value)"
+          >
+            <option value="">Select lot and location</option>
+            @for (balance of balances(); track keyForBalance(balance)) {
+              <option [value]="keyForBalance(balance)">
+                {{ balance.item_name }} · {{ balance.lot_code }} · {{ balance.location_name }} ·
+                {{ balance.current_quantity }} {{ balance.uom_code }}
+              </option>
+            }
+          </select></label
+        >
+        <label
+          ><span class="mb-1 block text-sm font-medium">Quantity consumed</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="number"
+            min="0.001"
+            step="0.1"
+            formControlName="quantity"
+        /></label>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Reference type</span
+          ><select
+            #referenceType
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            [value]="consumptionReferenceType()"
+            (change)="setConsumptionReference(referenceType.value)"
+          >
+            <option value="none">General consumption</option>
+            <option value="production">Production round</option>
+            <option value="packing">Packing run</option>
+          </select></label
+        >
+        @if (consumptionReferenceType() !== 'none') {
+          <label class="md:col-span-2"
+            ><span class="mb-1 block text-sm font-medium">Transaction reference</span
+            ><select
+              class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+              formControlName="referenceId"
+            >
+              <option value="">Select reference</option>
+              @for (reference of consumptionReferences(); track reference.id) {
+                <option [value]="reference.id">{{ reference.label }}</option>
+              }
+            </select></label
+          >
+        }
+        <label
+          ><span class="mb-1 block text-sm font-medium">Occurred at</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="datetime-local"
+            formControlName="occurredAt"
+        /></label>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Notes</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="notes"
+        /></label>
+        <button
+          class="rounded-lg bg-amber-500 px-4 py-2 font-bold text-slate-950 disabled:opacity-50 lg:self-end"
+          type="submit"
+          [disabled]="saving()"
+        >
+          Record consumption
+        </button>
+      </form>
+    }
+
+    @if (activeAction() === 'adjust') {
+      <form
+        class="mt-5 grid gap-4 rounded-2xl border border-violet-900 bg-slate-900 p-5 md:grid-cols-2 lg:grid-cols-4"
+        [formGroup]="adjustForm"
+        (ngSubmit)="adjust()"
+      >
+        <div class="md:col-span-2 lg:col-span-4">
+          <h2 class="text-xl font-bold">Owner stocktake adjustment</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            Enter a positive quantity to add stock or a negative quantity to reduce stock.
+          </p>
+        </div>
+        <label class="md:col-span-2"
+          ><span class="mb-1 block text-sm font-medium">Stock position</span
+          ><select
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="balanceKey"
+          >
+            <option value="">Select lot and location</option>
+            @for (balance of balances(); track keyForBalance(balance)) {
+              <option [value]="keyForBalance(balance)">
+                {{ balance.item_name }} · {{ balance.lot_code }} · {{ balance.location_name }} ·
+                {{ balance.current_quantity }} {{ balance.uom_code }}
+              </option>
+            }
+          </select></label
+        >
+        <label
+          ><span class="mb-1 block text-sm font-medium">Adjustment (+/−)</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="number"
+            step="0.1"
+            formControlName="adjustmentQuantity"
+        /></label>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Required reason</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="reason"
+        /></label>
+        <label
+          ><span class="mb-1 block text-sm font-medium">Occurred at</span
+          ><input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="datetime-local"
+            formControlName="occurredAt"
+        /></label>
+        <button
+          class="rounded-lg bg-violet-500 px-4 py-2 font-bold text-white disabled:opacity-50 lg:self-end"
+          type="submit"
+          [disabled]="saving()"
+        >
+          Record adjustment
+        </button>
+      </form>
+    }
+
+    <section class="mt-7 grid gap-3 sm:grid-cols-3">
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Ingredient items</p>
+        <p class="mt-1 text-2xl font-bold">{{ ingredientCount() }}</p>
+      </article>
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Packaging items</p>
+        <p class="mt-1 text-2xl font-bold">{{ packagingCount() }}</p>
+      </article>
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Active stock lots</p>
+        <p class="mt-1 text-2xl font-bold text-emerald-300">{{ representedLots() }}</p>
+      </article>
+    </section>
+
+    <section class="mt-9">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold">Stock by location</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            Live balance calculated from the movement ledger.
+          </p>
+        </div>
+        <div class="grid w-full gap-3 sm:grid-cols-2 md:w-auto">
+          <select
+            #typeFilter
+            class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+            (change)="itemTypeFilter.set(typeFilter.value)"
+          >
+            <option value="">Ingredients and packaging</option>
+            <option value="ingredient">Ingredients</option>
+            <option value="packaging">Packaging</option>
+          </select>
+          <select
+            #stockLocationFilter
+            class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+            (change)="locationFilter.set(stockLocationFilter.value)"
+          >
+            <option value="">All locations</option>
+            @for (location of locations(); track location.id) {
+              <option [value]="location.id">{{ location.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      @if (loading()) {
+        <p class="mt-5 text-slate-400">Loading inventory…</p>
+      } @else {
+        <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          @for (balance of filteredBalances(); track keyForBalance(balance)) {
+            <article class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="font-bold">{{ balance.item_name }}</p>
+                  <p class="mt-1 font-mono text-xs text-slate-400">
+                    {{ balance.item_code }} · Lot {{ balance.lot_code }}
+                  </p>
+                </div>
+                <span
+                  class="rounded-full px-2 py-1 text-xs font-bold capitalize"
+                  [class.bg-sky-950]="balance.item_type === 'ingredient'"
+                  [class.text-sky-300]="balance.item_type === 'ingredient'"
+                  [class.bg-violet-950]="balance.item_type === 'packaging'"
+                  [class.text-violet-300]="balance.item_type === 'packaging'"
+                  >{{ balance.item_type }}</span
+                >
+              </div>
+              <p class="mt-5 font-mono text-2xl font-bold text-emerald-300">
+                {{ balance.current_quantity | number: '1.0-3' }} {{ balance.uom_code }}
+              </p>
+              <p class="mt-1 font-semibold">{{ balance.location_name }}</p>
+              <p class="mt-3 text-xs text-slate-500">
+                Received {{ balance.received_at | date: 'd MMM y' }}
+                @if (balance.expiry_date) {
+                  · Expires {{ balance.expiry_date | date: 'd MMM y' }}
+                }
+              </p>
+            </article>
+          } @empty {
+            <div
+              class="rounded-2xl border border-dashed border-slate-700 px-5 py-12 text-center md:col-span-2 xl:col-span-3"
+            >
+              <p class="font-bold">No stock balances match these filters.</p>
+              <p class="mt-1 text-sm text-slate-400">
+                Receive an ingredient or packaging lot to begin.
+              </p>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="mt-10">
+      <h2 class="text-xl font-bold">Recent inventory movements</h2>
+      <div class="mt-4 overflow-hidden rounded-2xl border border-slate-800">
+        @for (movement of movements(); track movement.id) {
+          <article
+            class="grid gap-3 border-b border-slate-800 bg-slate-900 p-4 last:border-b-0 md:grid-cols-[1.3fr_0.8fr_1.5fr_1fr]"
+          >
+            <div>
+              <p class="font-bold">{{ movement.inventory_items?.name }}</p>
+              <p class="font-mono text-xs text-slate-500">
+                {{ movement.inventory_items?.code }} · {{ movement.inventory_lots?.lot_code }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs font-bold uppercase text-slate-500">Movement</p>
+              <p class="mt-1 font-semibold capitalize">
+                {{ movement.movement_type.replace('_', ' ') }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs font-bold uppercase text-slate-500">Route / reference</p>
+              <p class="mt-1 text-sm">
+                {{ movement.source_location?.name || 'External' }} →
+                {{ movement.destination_location?.name || 'Consumed' }}
+              </p>
+              @if (movement.production_batches || movement.packing_runs) {
+                <p class="mt-1 text-xs text-slate-500">
+                  {{
+                    movement.production_batches?.batch_code ||
+                      movement.packing_runs?.skus?.code + ' packing run'
+                  }}
+                </p>
+              }
+            </div>
+            <div class="text-right">
+              <p class="font-mono font-bold">
+                {{ movement.quantity }} {{ movement.units_of_measure?.code }}
+              </p>
+              <p class="mt-1 text-xs text-slate-500">
+                {{ movement.occurred_at | date: 'd MMM y, HH:mm' }}
+              </p>
+            </div>
+          </article>
+        } @empty {
+          <p class="bg-slate-900 px-5 py-8 text-center text-slate-400">
+            No inventory movements recorded yet.
+          </p>
+        }
+      </div>
+    </section>
+  </div>
+</main>

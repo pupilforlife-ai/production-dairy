@@ -1,0 +1,240 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 text-slate-100">
+  <header class="border-b border-slate-800 bg-slate-900 px-5 py-4">
+    <div class="mx-auto flex max-w-7xl items-center justify-between gap-4">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">Vejoy</p>
+        <h1 class="text-xl font-bold">Production Management</h1>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="hidden text-right sm:block">
+          <p class="text-sm font-semibold">
+            {{ auth.profile()?.display_name || auth.user()?.email }}
+          </p>
+          <p class="text-xs capitalize text-slate-400">
+            {{ auth.profile()?.role?.replace('_', ' ') }}
+          </p>
+        </div>
+        <button
+          class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800 disabled:opacity-50"
+          type="button"
+          [disabled]="signingOut()"
+          (click)="signOut()"
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
+  </header>
+  <section class="mx-auto max-w-7xl px-5 py-10">
+    <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+      Live factory overview
+    </p>
+    <h2 class="mt-2 text-3xl font-bold">Factory workspace</h2>
+    <p class="mt-3 max-w-2xl text-slate-400">
+      Current production progress and operational summaries appear here.
+    </p>
+
+    @if (errorMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+
+    @if (loading()) {
+      <div class="mt-8 animate-pulse rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <div class="h-5 w-48 rounded bg-slate-800"></div>
+        <div class="mt-6 h-5 rounded-full bg-slate-800"></div>
+      </div>
+    } @else if (milkLot(); as lot) {
+      <section class="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+        <button
+          class="block w-full p-5 text-left transition hover:bg-slate-800/60 sm:p-6"
+          type="button"
+          [attr.aria-expanded]="showMilkDetails()"
+          aria-controls="latest-milk-details"
+          (click)="showMilkDetails.set(!showMilkDetails())"
+        >
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div class="flex flex-wrap items-center gap-3">
+                <p class="text-sm font-bold uppercase tracking-wider text-emerald-400">
+                  Latest milk
+                </p>
+                <span class="rounded-full bg-slate-800 px-2.5 py-1 text-xs font-bold">
+                  {{ lot.status }}
+                </span>
+              </div>
+              <h3 class="mt-2 text-2xl font-bold">Milk lot {{ lot.lot_code }}</h3>
+              <p class="mt-1 text-sm text-slate-400">
+                Received {{ lot.received_at | date: 'EEEE, d MMMM y, HH:mm' }}
+              </p>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-right">
+                <p class="text-2xl font-black text-emerald-300">
+                  {{ milkUsage().percentage | number: '1.0-1' }}%
+                </p>
+                <p class="text-xs text-slate-500">used in production</p>
+              </div>
+              <svg
+                class="size-6 text-slate-400 transition-transform duration-200"
+                [class.rotate-180]="showMilkDetails()"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path d="m6 9 6 6 6-6"></path>
+              </svg>
+            </div>
+          </div>
+
+          <div
+            class="mt-7 h-5 overflow-hidden rounded-full border border-slate-700 bg-slate-950"
+            role="progressbar"
+            aria-label="Milk used in production"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            [attr.aria-valuenow]="milkUsage().percentage"
+          >
+            <div
+              class="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-[width] duration-500"
+              [style.width.%]="milkUsage().percentage"
+            ></div>
+          </div>
+
+          <div class="mt-5 grid grid-cols-3 gap-3">
+            <div>
+              <p class="text-xs font-bold uppercase text-slate-500">Received</p>
+              <p class="mt-1 font-mono text-lg font-bold sm:text-2xl">
+                {{ milkUsage().received | number: '1.0-1' }}
+                <span class="text-sm text-slate-400">{{ lot.units_of_measure?.code }}</span>
+              </p>
+            </div>
+            <div>
+              <p class="text-xs font-bold uppercase text-slate-500">Used</p>
+              <p class="mt-1 font-mono text-lg font-bold text-amber-300 sm:text-2xl">
+                {{ milkUsage().used | number: '1.0-1' }}
+                <span class="text-sm text-slate-400">{{ lot.units_of_measure?.code }}</span>
+              </p>
+            </div>
+            <div>
+              <p class="text-xs font-bold uppercase text-slate-500">Remaining</p>
+              <p class="mt-1 font-mono text-lg font-bold text-emerald-300 sm:text-2xl">
+                {{ milkUsage().remaining | number: '1.0-1' }}
+                <span class="text-sm text-slate-400">{{ lot.units_of_measure?.code }}</span>
+              </p>
+            </div>
+          </div>
+
+          <p class="mt-5 text-sm font-semibold text-emerald-400">
+            Click to {{ showMilkDetails() ? 'hide' : 'view' }} shift and round details
+          </p>
+        </button>
+
+        @if (showMilkDetails()) {
+          <div
+            id="latest-milk-details"
+            class="border-t border-slate-800 bg-slate-950/50 p-5 sm:p-6"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-xl font-bold">Shift and round summary</h3>
+                <p class="mt-1 text-sm text-slate-400">
+                  {{ shiftSummaries().length }} shifts · {{ batches().length }} production rounds
+                </p>
+              </div>
+              <p class="rounded-lg bg-slate-900 px-3 py-2 font-mono text-sm">
+                {{ milkUsage().used | number: '1.0-1' }} L allocated
+              </p>
+            </div>
+
+            <div class="mt-5 grid gap-4">
+              @for (shift of shiftSummaries(); track shift.id) {
+                <article class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+                  <header
+                    class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 px-4 py-3"
+                  >
+                    <div>
+                      <h4 class="font-bold">Shift {{ shift.shiftNumber }}</h4>
+                      <p class="mt-1 text-xs text-slate-400">
+                        {{ shift.startedAt | date: 'd MMM y, HH:mm' }} ·
+                        @for (member of shift.team; track member; let last = $last) {
+                          {{ member }}{{ last ? '' : ', ' }}
+                        }
+                      </p>
+                    </div>
+                    <div class="flex gap-4 text-right text-sm">
+                      <div>
+                        <p class="text-xs text-slate-500">Milk used</p>
+                        <p class="font-mono font-bold">{{ shift.milkUsed | number: '1.0-1' }} L</p>
+                      </div>
+                      <div>
+                        <p class="text-xs text-slate-500">Gross output</p>
+                        <p class="font-mono font-bold text-emerald-300">
+                          {{ shift.grossOutput | number: '1.0-1' }} kg
+                        </p>
+                      </div>
+                    </div>
+                  </header>
+                  <div class="divide-y divide-slate-800">
+                    @for (round of shift.rounds; track round.id) {
+                      <div
+                        class="grid gap-2 px-4 py-3 sm:grid-cols-[0.7fr_1.2fr_1fr_1fr] sm:items-center"
+                      >
+                        <p class="font-bold">
+                          Round {{ round.round_number }}
+                          <span
+                            class="ml-1 rounded bg-emerald-950 px-2 py-1 text-xs text-emerald-300"
+                            >{{ round.products?.variant }}</span
+                          >
+                        </p>
+                        <p class="text-sm text-slate-300">{{ round.products?.name }}</p>
+                        <p class="text-sm text-slate-400">
+                          {{ statusLabel(round.status) }}
+                        </p>
+                        <p class="font-mono text-sm">
+                          {{ round.actual_primary_input_quantity ?? '—' }} L milk ·
+                          {{ round.gross_output_quantity ?? '—' }} kg output
+                        </p>
+                      </div>
+                    }
+                  </div>
+                </article>
+              } @empty {
+                <div class="rounded-xl border border-dashed border-slate-700 px-4 py-8 text-center">
+                  <p class="font-bold">No production has used this milk lot yet.</p>
+                  <p class="mt-1 text-sm text-slate-400">
+                    Shifts and rounds will appear here as they are recorded.
+                  </p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </section>
+    } @else {
+      <div class="mt-8 rounded-2xl border border-dashed border-slate-700 px-5 py-12 text-center">
+        <svg
+          class="mx-auto size-10 text-slate-500"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          aria-hidden="true"
+        >
+          <path d="M12 2S5.5 9.2 5.5 14.5a6.5 6.5 0 0 0 13 0C18.5 9.2 12 2 12 2Z"></path>
+        </svg>
+        <p class="mt-3 font-bold">No accepted milk lot has been recorded yet.</p>
+        <p class="mt-1 text-sm text-slate-400">
+          The latest milk progress will appear here after receiving.
+        </p>
+      </div>
+    }
+  </section>
+</main>

@@ -5,8 +5,14 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:beta": "ng build --configuration beta",
+    "start:beta": "ng serve --configuration beta",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "test:ci": "ng test --watch=false"
   },
   "private": true,
   "packageManager": "npm@10.9.8",

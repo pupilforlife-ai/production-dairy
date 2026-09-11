@@ -1,0 +1,1031 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 px-2 py-3 text-slate-100 sm:px-3">
+  <div class="mx-auto max-w-[1900px]">
+    <a class="text-xs font-semibold text-emerald-400 hover:text-emerald-300" routerLink="/">
+      ← Factory workspace
+    </a>
+
+    <header class="mt-2 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">
+          Live milk-to-paneer tracking
+        </p>
+        <h1 class="mt-0.5 text-2xl font-bold">Production board</h1>
+        <p class="mt-1 hidden max-w-3xl text-sm text-slate-400 xl:block">
+          Each shift is identified by its shift number, milk-date batch code, and team. Update each
+          round as the milk moves through the factory.
+        </p>
+      </div>
+      <button
+        class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-900"
+        type="button"
+        (click)="showShiftForm.set(!showShiftForm())"
+      >
+        {{ showShiftForm() ? 'Cancel' : 'Create shift' }}
+      </button>
+    </header>
+
+    @if (errorMessage()) {
+      <p
+        class="fixed right-3 top-3 z-50 max-w-md rounded-lg border border-red-800 bg-red-950 px-3 py-2 text-sm text-red-100 shadow-xl"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+    @if (successMessage()) {
+      <p
+        class="fixed right-3 top-3 z-50 max-w-md rounded-lg border border-emerald-800 bg-emerald-950 px-3 py-2 text-sm text-emerald-100 shadow-xl"
+        role="status"
+      >
+        {{ successMessage() }}
+      </p>
+    }
+
+    @if (showShiftForm()) {
+      <form
+        class="mt-6 grid gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-5 md:grid-cols-2"
+        [formGroup]="shiftForm"
+        (ngSubmit)="createShift()"
+      >
+        <div class="md:col-span-2">
+          <h2 class="text-xl font-bold">Start a production shift</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            All rounds in this shift use the same source milk lot and date batch code.
+          </p>
+        </div>
+        <label class="block">
+          <span class="mb-2 block text-sm font-medium">Source milk lot</span>
+          <select
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            formControlName="sourceLotId"
+          >
+            <option value="">Select milk lot</option>
+            @for (lot of sourceLots(); track lot.id) {
+              <option [value]="lot.id">
+                {{ lot.lot_code }} — {{ lotRemaining(lot) | number: '1.0-1' }}
+                {{ lot.units_of_measure?.code }} available
+              </option>
+            }
+          </select>
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-sm font-medium">Shift number</span>
+          <input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            type="number"
+            min="1"
+            formControlName="shiftNumber"
+            placeholder="e.g. 1"
+          />
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-sm font-medium">Shift start</span>
+          <input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            type="datetime-local"
+            formControlName="startedAt"
+          />
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-sm font-medium">Team members</span>
+          <input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            formControlName="teamMembers"
+            placeholder="Names separated by commas"
+          />
+        </label>
+        <label class="block md:col-span-2">
+          <span class="mb-2 block text-sm font-medium">Shift notes (optional)</span>
+          <textarea
+            class="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            formControlName="teamNotes"
+          ></textarea>
+        </label>
+        <div class="md:col-span-2">
+          <button
+            class="rounded-xl bg-emerald-500 px-5 py-3 font-bold text-slate-950 disabled:opacity-50"
+            type="submit"
+            [disabled]="saving()"
+          >
+            {{ saving() ? 'Creating…' : 'Create shift' }}
+          </button>
+        </div>
+      </form>
+    }
+
+    @if (loading()) {
+      <p class="mt-4 text-sm text-slate-400">Loading live production board…</p>
+    } @else {
+      <section class="mt-4 grid gap-4">
+        @for (shift of shifts(); track shift.id) {
+          <article
+            class="overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl"
+          >
+            <header
+              class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 bg-slate-800/80 px-3 py-2"
+            >
+              <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-sm">
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                    >Shift</span
+                  >
+                  <strong class="ml-1.5 text-lg text-white">{{ shift.shift_number }}</strong>
+                </div>
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                    >Batch</span
+                  >
+                  <strong class="ml-1.5 font-mono text-lg text-amber-300">{{
+                    batchCode(shift)
+                  }}</strong>
+                </div>
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                    >Team</span
+                  >
+                  <strong class="ml-1.5">
+                    @for (
+                      member of shift.shift_members;
+                      track member.person_name;
+                      let last = $last
+                    ) {
+                      {{ member.person_name }}{{ last ? '' : ', ' }}
+                    } @empty {
+                      —
+                    }
+                  </strong>
+                </div>
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                    >Milk</span
+                  >
+                  <span class="ml-1.5 text-xs font-semibold">
+                    {{ shift.source_lots?.lot_code }} ·
+                    {{ shift.source_lots?.received_at | date: 'd MMM y, HH:mm' }}
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <button
+                  class="flex items-center gap-1.5 rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-bold text-slate-200 hover:border-sky-600 hover:bg-slate-700"
+                  type="button"
+                  [attr.aria-expanded]="!isShiftCollapsed(shift.id)"
+                  [attr.aria-controls]="'shift-rounds-' + shift.id"
+                  (click)="toggleShift(shift.id)"
+                >
+                  <svg
+                    class="size-4 transition-transform"
+                    [class.rotate-180]="!isShiftCollapsed(shift.id)"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                  >
+                    <path d="m6 9 6 6 6-6"></path>
+                  </svg>
+                  {{ isShiftCollapsed(shift.id) ? 'Expand shift' : 'Collapse shift' }}
+                </button>
+                <span
+                  class="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase"
+                  [class.border-emerald-700]="shift.status === 'open'"
+                  [class.text-emerald-300]="shift.status === 'open'"
+                  [class.border-slate-600]="shift.status !== 'open'"
+                  [class.text-slate-400]="shift.status !== 'open'"
+                >
+                  {{ shift.status }}
+                </span>
+                @if (shift.status === 'open') {
+                  <button
+                    class="rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+                    type="button"
+                    [disabled]="addingRoundShiftId() !== null"
+                    (click)="addRound(shift)"
+                  >
+                    {{ addingRoundShiftId() === shift.id ? 'Adding…' : '+ Add round' }}
+                  </button>
+                }
+              </div>
+            </header>
+
+            @if (!isShiftCollapsed(shift.id)) {
+              <div class="overflow-x-auto" [id]="'shift-rounds-' + shift.id">
+                <table class="min-w-[1540px] w-full border-collapse text-left text-xs">
+                  <thead
+                    class="sticky top-0 z-20 bg-slate-950 text-[10px] uppercase tracking-wider text-slate-400"
+                  >
+                    <tr>
+                      <th
+                        class="sticky left-0 z-30 w-24 border-b border-r border-slate-800 bg-slate-950 px-2 py-2"
+                      >
+                        Round
+                      </th>
+                      <th class="w-28 border-b border-r border-slate-800 px-2 py-2">Milk Qty</th>
+                      <th class="w-28 border-b border-r border-slate-800 px-2 py-2">Milk °C</th>
+                      <th class="w-20 border-b border-r border-slate-800 px-2 py-2">Type</th>
+                      <th class="w-60 border-b border-r border-slate-800 px-2 py-2">
+                        Current stage
+                      </th>
+                      <th class="w-24 border-b border-r border-slate-800 px-2 py-2">Blocks</th>
+                      <th class="w-52 border-b border-r border-slate-800 px-2 py-2">
+                        Block weights
+                      </th>
+                      <th class="w-40 border-b border-r border-slate-800 px-2 py-2">Cut by</th>
+                      <th class="w-44 border-b border-r border-slate-800 px-2 py-2">Cut into</th>
+                      <th class="min-w-64 border-b border-slate-800 px-2 py-2">Packed into</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (batch of roundsForShift(shift.id); track batch.id) {
+                      @let timer = timerFor(batch);
+                      @let blockSummaryData = blockSummary(batch);
+                      @let clingEvent = latestClingWrappedEvent(batch.id);
+                      @let creamSummaryData = creamSummary(batch.id);
+                      @let ingredientSummaryData = ingredientSummary(batch.id);
+                      <tr class="align-middle even:bg-slate-950/25">
+                        <td
+                          class="sticky left-0 z-10 border-b border-r border-slate-800 bg-slate-900 px-2 py-2"
+                        >
+                          <p class="inline text-lg font-black text-white">
+                            {{ batch.round_number }}
+                          </p>
+                          <p class="ml-1 inline font-mono text-[10px] font-bold text-emerald-300">
+                            {{ trayReference(shift, batch) }}
+                          </p>
+                          <button
+                            class="ml-1 block text-[10px] font-semibold text-sky-300 hover:text-sky-200"
+                            type="button"
+                            (click)="toggleHistory(batch.id)"
+                          >
+                            {{ historyBatchId() === batch.id ? 'Hide' : 'History' }}
+                          </button>
+                        </td>
+                        <td class="border-b border-r border-slate-800 px-2 py-2">
+                          <div class="relative">
+                            <input
+                              #milkQuantityInput
+                              class="w-full rounded-md border bg-slate-950 py-1.5 pl-2 pr-6 font-mono font-black disabled:opacity-50"
+                              [class.border-slate-700]="batch.actual_primary_input_quantity === 500"
+                              [class.text-emerald-200]="batch.actual_primary_input_quantity === 500"
+                              [class.border-amber-600]="batch.actual_primary_input_quantity !== 500"
+                              [class.text-amber-200]="batch.actual_primary_input_quantity !== 500"
+                              type="number"
+                              min="0.001"
+                              step="0.1"
+                              [value]="batch.actual_primary_input_quantity ?? 500"
+                              [disabled]="!!batch.locked_at || cellBusy(batch, 'milk_quantity')"
+                              [attr.aria-label]="
+                                'Milk quantity in litres for round ' + batch.round_number
+                              "
+                              (change)="
+                                updateRoundCell(batch, 'milk_quantity', milkQuantityInput.value)
+                              "
+                            />
+                            <span
+                              class="pointer-events-none absolute right-2 top-2 text-[9px] font-bold text-slate-500"
+                              >L</span
+                            >
+                            @if (cellBusy(batch, 'milk_quantity')) {
+                              <span class="mt-0.5 block text-[10px] text-amber-300">Saving…</span>
+                            } @else if (batch.actual_primary_input_quantity !== 500) {
+                              <span class="mt-0.5 block text-[9px] font-bold text-amber-300"
+                                >Anomaly</span
+                              >
+                            }
+                          </div>
+                        </td>
+                        <td class="border-b border-r border-slate-800 px-2 py-2">
+                          <div class="relative">
+                            <input
+                              #temperatureInput
+                              class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono disabled:opacity-50"
+                              type="number"
+                              min="-10"
+                              max="110"
+                              step="0.1"
+                              [value]="batch.milk_start_temperature_c ?? ''"
+                              [disabled]="!!batch.locked_at || cellBusy(batch, 'milk_temperature')"
+                              [attr.aria-label]="
+                                'Starting milk temperature for round ' + batch.round_number
+                              "
+                              (change)="
+                                updateRoundCell(batch, 'milk_temperature', temperatureInput.value)
+                              "
+                            />
+                            @if (cellBusy(batch, 'milk_temperature')) {
+                              <span class="mt-0.5 block text-[10px] text-amber-300">Saving…</span>
+                            }
+                          </div>
+                        </td>
+                        <td class="border-b border-r border-slate-800 px-2 py-2">
+                          <select
+                            #typeSelect
+                            class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm font-black disabled:opacity-50"
+                            [value]="batch.products?.variant"
+                            [disabled]="
+                              !!batch.locked_at ||
+                              !!batch.cut_completed_at ||
+                              batch.cut_format === 'cling_wrapped' ||
+                              hasCream(batch.id) ||
+                              hasIngredientProcessing(batch.id) ||
+                              cellBusy(batch, 'type')
+                            "
+                            [attr.aria-label]="'Paneer type for round ' + batch.round_number"
+                            (change)="updateRoundCell(batch, 'type', typeSelect.value)"
+                          >
+                            <option value="D">D</option>
+                            <option value="C/S">C/S</option>
+                          </select>
+                          @if (batch.products?.variant === 'C/S') {
+                            <button
+                              class="mt-1 w-full rounded border px-1 py-0.5 text-[10px] font-bold"
+                              [class.border-sky-800]="creamSummaryData.count === 0"
+                              [class.text-sky-300]="creamSummaryData.count === 0"
+                              [class.border-amber-800]="creamSummaryData.count > 0"
+                              [class.bg-amber-950]="creamSummaryData.count > 0"
+                              [class.text-amber-200]="creamSummaryData.count > 0"
+                              type="button"
+                              (click)="openCreamPanel(batch)"
+                            >
+                              @if (creamSummaryData.count) {
+                                Cream {{ creamSummaryData.count }} ·
+                                {{ creamSummaryData.totalWeightKg | number: '1.0-2' }} kg
+                              } @else {
+                                + Cream
+                              }
+                            </button>
+                          }
+                        </td>
+                        <td class="border-b border-r border-slate-800 px-2 py-2">
+                          <select
+                            #stageSelect
+                            class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 font-bold disabled:opacity-50"
+                            [value]="batch.process_stage"
+                            [disabled]="
+                              !!batch.locked_at ||
+                              !!batch.cut_completed_at ||
+                              batch.cut_format === 'cling_wrapped' ||
+                              cellBusy(batch, 'process_stage')
+                            "
+                            [attr.aria-label]="
+                              'Current process stage for round ' + batch.round_number
+                            "
+                            (change)="updateRoundCell(batch, 'process_stage', stageSelect.value)"
+                          >
+                            @for (stage of stages; track stage.value) {
+                              <option [value]="stage.value">{{ stage.label }}</option>
+                            }
+                          </select>
+                          <div class="mt-1 flex flex-wrap items-center gap-1">
+                            <span class="text-[10px] text-slate-500">
+                              {{ batch.process_stage_changed_at | date: 'HH:mm' }}
+                            </span>
+                            @if (timer) {
+                              @if (timer.ready) {
+                                <span
+                                  class="animate-pulse rounded border border-amber-400 bg-amber-300 px-1.5 py-0.5 text-[10px] font-black text-amber-950"
+                                  role="status"
+                                  [title]="timer.prompt + '. Change the stage manually.'"
+                                >
+                                  {{ timer.prompt }}
+                                </span>
+                              } @else {
+                                <span
+                                  class="rounded border border-sky-800 bg-sky-950/70 px-1.5 py-0.5 text-[10px] font-bold text-sky-200"
+                                >
+                                  {{ remainingLabel(timer.remainingMinutes) }}
+                                </span>
+                              }
+                            }
+                          </div>
+                          @if (ingredientSummaryData.componentCount) {
+                            <button
+                              class="mt-1 w-full rounded border px-1.5 py-0.5 text-[10px] font-black"
+                              [class.border-amber-500]="ingredientSummaryData.hasShortage"
+                              [class.bg-amber-950]="ingredientSummaryData.hasShortage"
+                              [class.text-amber-200]="ingredientSummaryData.hasShortage"
+                              [class.border-emerald-800]="!ingredientSummaryData.hasShortage"
+                              [class.bg-emerald-950]="!ingredientSummaryData.hasShortage"
+                              [class.text-emerald-300]="!ingredientSummaryData.hasShortage"
+                              type="button"
+                              (click)="toggleIngredientPanel(batch.id)"
+                            >
+                              @if (ingredientSummaryData.hasShortage) {
+                                Shortage · {{ ingredientSummaryData.shortageCount }}
+                              } @else {
+                                Ingredients issued
+                              }
+                            </button>
+                          } @else if (ingredientsDue(batch) && !batch.recipe_version_id) {
+                            <button
+                              class="mt-1 w-full rounded border border-red-700 bg-red-950 px-1.5 py-0.5 text-[10px] font-black text-red-200"
+                              type="button"
+                              (click)="toggleIngredientPanel(batch.id)"
+                            >
+                              Recipe missing
+                            </button>
+                          }
+                        </td>
+                        <td class="border-b border-r border-slate-800 px-2 py-2">
+                          <input
+                            #blockCountInput
+                            class="w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 font-mono text-sm font-medium text-slate-400 disabled:opacity-50"
+                            type="number"
+                            min="1"
+                            step="1"
+                            [value]="batch.pressed_block_count ?? ''"
+                            [disabled]="
+                              !!batch.locked_at ||
+                              batch.process_stage !== 'ready_for_cutting' ||
+                              !!batch.cut_completed_at ||
+                              hasPacking(batch) ||
+                              updatingBlock() !== null
+                            "
+                            [attr.aria-label]="
+                              'Number of pressed blocks for round ' + batch.round_number
+                            "
+                            (change)="updateBlockCount(batch, blockCountInput.value)"
+                          />
+                          @if (batch.process_stage !== 'ready_for_cutting') {
+                            <p class="mt-1 text-[10px] text-slate-500">After resting</p>
+                          }
+                        </td>
+                        <td class="border-b border-r border-slate-800 px-2 py-2">
+                          @if (batch.pressed_block_count) {
+                            <button
+                              class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-left hover:border-sky-700 disabled:opacity-50"
+                              type="button"
+                              [disabled]="batch.process_stage !== 'ready_for_cutting'"
+                              (click)="toggleBlockPanel(batch)"
+                            >
+                              @if (blockSummaryData.recordedCount) {
+                                <strong class="font-mono text-base font-black text-emerald-300">
+                                  {{ blockSummaryData.totalWeightKg | number: '1.0-2' }} kg
+                                </strong>
+                                <span class="ml-1 text-[10px] font-normal text-slate-500">
+                                  · {{ blockSummaryData.recordedCount }}/{{
+                                    blockSummaryData.expectedCount
+                                  }}
+                                  blocks
+                                </span>
+                              } @else {
+                                <span class="text-[10px] font-normal text-slate-500">
+                                  0/{{ blockSummaryData.expectedCount }} blocks weighed
+                                </span>
+                              }
+                            </button>
+                            @if (blockSummaryData.anomalyCount > 0) {
+                              <p
+                                class="mt-1 rounded border border-amber-700 bg-amber-950/70 px-1 py-0.5 text-[10px] font-bold text-amber-200"
+                              >
+                                {{ blockSummaryData.anomalyCount }} above-capacity
+                                {{ blockSummaryData.anomalyCount === 1 ? 'anomaly' : 'anomalies' }}
+                              </p>
+                            } @else if (!blockSummaryData.complete) {
+                              <p class="mt-1 text-[10px] font-semibold text-amber-300">
+                                Weights missing
+                              </p>
+                            }
+                          } @else {
+                            <p class="text-[10px] text-slate-500">Set block count first</p>
+                          }
+                        </td>
+                        <td class="border-b border-r border-slate-800 px-2 py-2">
+                          <input
+                            #cutByInput
+                            class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 disabled:opacity-50"
+                            [value]="batch.cut_by ?? ''"
+                            [disabled]="
+                              !!batch.locked_at ||
+                              batch.process_stage !== 'ready_for_cutting' ||
+                              !blocksComplete(batch) ||
+                              batch.cut_format === 'cling_wrapped' ||
+                              hasPacking(batch) ||
+                              cellBusy(batch, 'cut_by')
+                            "
+                            [attr.aria-label]="'Cut by for round ' + batch.round_number"
+                            placeholder="Worker name"
+                            (change)="updateRoundCell(batch, 'cut_by', cutByInput.value)"
+                          />
+                          @if (batch.process_stage !== 'ready_for_cutting') {
+                            <p class="mt-1 text-[10px] text-slate-500">Available when ready</p>
+                          } @else if (!blocksComplete(batch)) {
+                            <p class="mt-1 text-[10px] text-slate-500">Weights required</p>
+                          } @else if (batch.cut_format === 'cling_wrapped') {
+                            <p class="mt-1 text-[10px] font-semibold text-amber-300">
+                              Select final cut first
+                            </p>
+                          }
+                        </td>
+                        <td class="border-b border-r border-slate-800 px-2 py-2">
+                          <select
+                            #cutFormatSelect
+                            class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 disabled:opacity-50"
+                            [value]="batch.cut_format ?? ''"
+                            [disabled]="
+                              !!batch.locked_at ||
+                              batch.process_stage !== 'ready_for_cutting' ||
+                              !blocksComplete(batch) ||
+                              hasPacking(batch) ||
+                              cellBusy(batch, 'cut_format')
+                            "
+                            [attr.aria-label]="'Cut format for round ' + batch.round_number"
+                            (change)="updateRoundCell(batch, 'cut_format', cutFormatSelect.value)"
+                          >
+                            <option value="">Select cut</option>
+                            @for (format of cutFormats; track format.value) {
+                              <option [value]="format.value">{{ format.label }}</option>
+                            }
+                          </select>
+                          @if (batch.cut_by && !batch.cut_format) {
+                            <p class="mt-1 text-[10px] font-semibold text-amber-300">Select cut</p>
+                          } @else if (batch.cut_format === 'cling_wrapped' && clingEvent) {
+                            <p
+                              class="mt-1 rounded border border-amber-700 bg-amber-950/70 px-1 py-0.5 text-[10px] font-semibold text-amber-200"
+                            >
+                              Stored {{ clingEvent.recorded_at | date: 'd MMM, HH:mm' }}
+                              @if (clingEvent.profiles?.display_name) {
+                                · {{ clingEvent.profiles?.display_name }}
+                              }
+                            </p>
+                          } @else if (clingEvent) {
+                            <p class="mt-1 text-[10px] text-slate-500">
+                              Previously cling wrapped
+                              {{ clingEvent.recorded_at | date: 'd MMM, HH:mm' }}
+                            </p>
+                          }
+                        </td>
+                        <td class="border-b border-slate-800 px-2 py-2">
+                          <div class="flex flex-wrap items-center gap-1">
+                            @for (entry of packingFor(batch.id); track entry.id) {
+                              <div
+                                class="rounded border border-emerald-900 bg-emerald-950/50 px-2 py-1"
+                              >
+                                <strong class="text-emerald-200">{{ entry.skus?.code }}</strong>
+                                <span class="ml-1 text-[10px] text-slate-300">
+                                  {{ entry.cases }}c · {{ entry.loose_packets }} loose
+                                </span>
+                              </div>
+                            }
+                            @if (batch.cut_format === 'cling_wrapped') {
+                              <p
+                                class="rounded border border-amber-800 bg-amber-950/50 px-2 py-1 text-[10px] font-semibold text-amber-200"
+                              >
+                                In chiller · awaiting final cutting
+                              </p>
+                            } @else if (batch.cut_format === 'spp') {
+                              <p
+                                class="rounded border border-violet-900 bg-violet-950/50 px-2 py-1 text-[10px] font-semibold text-violet-200"
+                              >
+                                Continues to the SPP crumbing process before packing.
+                              </p>
+                            } @else if (!batch.cut_completed_at) {
+                              <p class="text-[10px] text-slate-500">Cut details required</p>
+                            } @else {
+                              <button
+                                class="w-fit rounded border border-emerald-700 px-2 py-1 text-xs font-bold text-emerald-300 hover:bg-emerald-950"
+                                type="button"
+                                (click)="openPacking(batch)"
+                              >
+                                {{ packingBatchId() === batch.id ? 'Cancel' : '+ Add packing' }}
+                              </button>
+                            }
+                          </div>
+                        </td>
+                      </tr>
+
+                      @if (ingredientPanelBatchId() === batch.id) {
+                        <tr class="bg-amber-950/15">
+                          <td class="border-b border-slate-800 px-5 py-4" colspan="10">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p class="font-bold text-amber-200">
+                                  Ingredient issue · Shift {{ shift.shift_number }} / Round
+                                  {{ batch.round_number }}
+                                </p>
+                                <p class="mt-1 text-xs text-slate-400">
+                                  VAT 2/3 issues Supayield and cream powder. Coagulation issues GDL,
+                                  potassium sorbate and CaCl₂. Quantities scale to
+                                  {{ batch.actual_primary_input_quantity }} L milk.
+                                </p>
+                              </div>
+                              <button
+                                class="text-xs font-semibold text-amber-300"
+                                type="button"
+                                (click)="toggleIngredientPanel(batch.id)"
+                              >
+                                Close
+                              </button>
+                            </div>
+
+                            @if (!batch.recipe_version_id) {
+                              <p
+                                class="mt-3 rounded-lg border border-red-800 bg-red-950/60 px-3 py-2 font-bold text-red-200"
+                              >
+                                No effective recipe is configured for this paneer type. Production
+                                continues, but no ingredients can be deducted.
+                              </p>
+                            } @else {
+                              <div class="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                                @for (issue of ingredientIssuesFor(batch.id); track issue.id) {
+                                  <article
+                                    class="rounded-lg border p-3"
+                                    [class.border-amber-600]="issue.shortage_quantity > 0"
+                                    [class.bg-amber-950]="issue.shortage_quantity > 0"
+                                    [class.border-slate-700]="issue.shortage_quantity <= 0"
+                                    [class.bg-slate-900]="issue.shortage_quantity <= 0"
+                                  >
+                                    <div class="flex items-start justify-between gap-3">
+                                      <div>
+                                        <strong>{{
+                                          issue.recipe_components?.ingredients?.name || 'Ingredient'
+                                        }}</strong>
+                                        <p class="mt-0.5 text-[10px] uppercase text-slate-500">
+                                          {{
+                                            issue.addition_stage === 'processing_vat'
+                                              ? 'VAT 2 / VAT 3'
+                                              : 'Coagulation tank'
+                                          }}
+                                        </p>
+                                      </div>
+                                      @if (issue.shortage_quantity > 0) {
+                                        <span class="text-xs font-black text-amber-200">SHORT</span>
+                                      } @else {
+                                        <span class="text-xs font-bold text-emerald-300"
+                                          >ISSUED</span
+                                        >
+                                      }
+                                    </div>
+                                    <div class="mt-2 flex gap-4 font-mono text-xs">
+                                      <span>
+                                        Required {{ issue.required_quantity | number: '1.0-3' }}
+                                        {{ issue.units_of_measure?.code }}
+                                      </span>
+                                      <span>
+                                        Issued {{ issue.issued_quantity | number: '1.0-3' }}
+                                        {{ issue.units_of_measure?.code }}
+                                      </span>
+                                    </div>
+                                    @if (issue.shortage_quantity > 0) {
+                                      <p class="mt-2 font-mono font-black text-amber-200">
+                                        Short {{ issue.shortage_quantity | number: '1.0-3' }}
+                                        {{ issue.units_of_measure?.code }}
+                                      </p>
+                                    }
+                                  </article>
+                                }
+                              </div>
+                              @if (ingredientSummaryData.hasShortage) {
+                                <button
+                                  class="mt-3 rounded-lg bg-amber-400 px-3 py-2 text-xs font-black text-amber-950 disabled:opacity-50"
+                                  type="button"
+                                  [disabled]="retryingIngredients() !== null"
+                                  (click)="retryIngredientShortages(batch)"
+                                >
+                                  {{
+                                    retryingIngredients() === batch.id
+                                      ? 'Checking stock…'
+                                      : 'Retry available stock'
+                                  }}
+                                </button>
+                              }
+                            }
+                          </td>
+                        </tr>
+                      }
+
+                      @if (creamPanelBatchId() === batch.id) {
+                        <tr class="bg-amber-950/15">
+                          <td class="border-b border-slate-800 px-5 py-4" colspan="10">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p class="font-bold text-amber-200">
+                                  C/S Cream · Shift {{ shift.shift_number }} / Round
+                                  {{ batch.round_number }}
+                                </p>
+                                <p class="mt-1 text-xs text-slate-400">
+                                  Each bucket is separate recovered-cream stock stored in the Dairy
+                                  Container.
+                                </p>
+                              </div>
+                              <button
+                                class="text-xs font-semibold text-amber-300 hover:text-amber-200"
+                                type="button"
+                                (click)="openCreamPanel(batch)"
+                              >
+                                Close
+                              </button>
+                            </div>
+
+                            <div class="mt-3 flex flex-wrap items-end gap-3">
+                              @for (bucket of creamBucketsFor(batch.id); track bucket.id) {
+                                <label
+                                  class="w-44 rounded-lg border border-amber-900 bg-slate-900 p-2"
+                                >
+                                  <span
+                                    class="block text-[10px] font-medium uppercase text-slate-500"
+                                  >
+                                    Bucket {{ bucket.bucket_number }}
+                                  </span>
+                                  <div class="relative mt-1">
+                                    <input
+                                      #creamBucketWeight
+                                      class="w-full rounded border border-amber-800 bg-slate-950 py-1.5 pl-2 pr-8 font-mono text-lg font-black text-amber-200 disabled:opacity-60"
+                                      type="number"
+                                      min="0.001"
+                                      step="0.01"
+                                      [value]="bucket.weight_kg"
+                                      [disabled]="
+                                        shift.status !== 'open' || updatingCream() !== null
+                                      "
+                                      [attr.aria-label]="
+                                        'Cream weight in kilograms for Bucket ' +
+                                        bucket.bucket_number
+                                      "
+                                      (change)="updateCreamBucket(bucket, creamBucketWeight.value)"
+                                    />
+                                    <span
+                                      class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-500"
+                                      >kg</span
+                                    >
+                                  </div>
+                                  <span class="mt-1 block truncate text-[9px] text-slate-500">
+                                    {{ bucket.recorded_at | date: 'd MMM, HH:mm' }}
+                                    @if (bucket.profiles?.display_name) {
+                                      · {{ bucket.profiles?.display_name }}
+                                    }
+                                  </span>
+                                </label>
+                              }
+
+                              @if (shift.status === 'open') {
+                                <form
+                                  class="flex items-end gap-2 rounded-lg border border-dashed border-sky-800 bg-sky-950/20 p-2"
+                                  [formGroup]="creamForm"
+                                  (ngSubmit)="addCreamBucket(batch)"
+                                >
+                                  <label class="w-36">
+                                    <span
+                                      class="mb-1 block text-[10px] font-bold uppercase text-slate-400"
+                                      >Next bucket (kg)</span
+                                    >
+                                    <input
+                                      class="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono font-bold"
+                                      type="number"
+                                      min="0.001"
+                                      step="0.01"
+                                      formControlName="weightKg"
+                                      placeholder="0.00"
+                                    />
+                                  </label>
+                                  <button
+                                    class="rounded bg-sky-500 px-3 py-1.5 text-xs font-bold text-slate-950 disabled:opacity-50"
+                                    type="submit"
+                                    [disabled]="updatingCream() !== null"
+                                  >
+                                    {{
+                                      updatingCream() === batch.id + ':new'
+                                        ? 'Saving…'
+                                        : '+ Add bucket'
+                                    }}
+                                  </button>
+                                </form>
+                              } @else {
+                                <p class="text-xs text-slate-500">
+                                  This shift has ended; new cream buckets cannot be added.
+                                </p>
+                              }
+
+                              @if (creamSummaryData.count) {
+                                <div class="ml-auto px-3 py-2 text-right">
+                                  <strong class="block font-mono text-xl text-amber-200">
+                                    {{ creamSummaryData.totalWeightKg | number: '1.0-2' }} kg
+                                  </strong>
+                                  <span class="text-[10px] text-slate-500">
+                                    {{ creamSummaryData.count }}
+                                    bucket{{ creamSummaryData.count === 1 ? '' : 's' }}
+                                  </span>
+                                </div>
+                              }
+                            </div>
+                          </td>
+                        </tr>
+                      }
+
+                      @if (blockPanelBatchId() === batch.id) {
+                        <tr class="bg-sky-950/20">
+                          <td class="border-b border-slate-800 px-5 py-5" colspan="10">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p class="font-bold text-sky-200">
+                                  Shift {{ shift.shift_number }} / Round
+                                  {{ batch.round_number }} block weights
+                                </p>
+                                <p class="mt-1 text-sm text-slate-400">
+                                  Enter the exact weight of every pressed paneer block. Anything
+                                  above 13 kg is recorded as an anomaly but does not stop cutting.
+                                </p>
+                              </div>
+                              <button
+                                class="text-sm font-semibold text-sky-300 hover:text-sky-200"
+                                type="button"
+                                (click)="toggleBlockPanel(batch)"
+                              >
+                                Close
+                              </button>
+                            </div>
+                            <div
+                              class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"
+                            >
+                              @for (block of blocksFor(batch.id); track block.id) {
+                                <label
+                                  class="rounded-xl border p-3"
+                                  [class.border-amber-600]="
+                                    block.weight_kg !== null && block.weight_kg > 13
+                                  "
+                                  [class.bg-amber-950]="
+                                    block.weight_kg !== null && block.weight_kg > 13
+                                  "
+                                  [class.border-slate-700]="
+                                    block.weight_kg === null || block.weight_kg <= 13
+                                  "
+                                  [class.bg-slate-900]="
+                                    block.weight_kg === null || block.weight_kg <= 13
+                                  "
+                                >
+                                  <span
+                                    class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-slate-500"
+                                  >
+                                    Block {{ block.block_number }}
+                                  </span>
+                                  <div class="relative">
+                                    <input
+                                      #blockWeightInput
+                                      class="w-full rounded-lg border border-emerald-800 bg-slate-950 py-2 pl-3 pr-9 font-mono text-xl font-black text-emerald-200 disabled:opacity-50"
+                                      type="number"
+                                      min="0.01"
+                                      step="0.01"
+                                      [value]="block.weight_kg ?? ''"
+                                      [class.border-amber-500]="
+                                        block.weight_kg !== null && block.weight_kg > 13
+                                      "
+                                      [class.text-amber-200]="
+                                        block.weight_kg !== null && block.weight_kg > 13
+                                      "
+                                      [disabled]="
+                                        !!batch.locked_at ||
+                                        !!batch.cut_completed_at ||
+                                        hasPacking(batch) ||
+                                        updatingBlock() !== null
+                                      "
+                                      [attr.aria-label]="
+                                        'Weight in kilograms for Block ' + block.block_number
+                                      "
+                                      (change)="
+                                        updateBlockWeight(batch, block, blockWeightInput.value)
+                                      "
+                                    />
+                                    <span
+                                      class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-500"
+                                      >kg</span
+                                    >
+                                  </div>
+                                  @if (block.weight_kg !== null && block.weight_kg > 13) {
+                                    <span class="mt-2 block text-xs font-black text-amber-200">
+                                      Above press capacity · anomaly recorded
+                                    </span>
+                                  }
+                                </label>
+                              }
+                            </div>
+                            <div class="mt-4 flex flex-wrap items-baseline gap-4 text-sm">
+                              <strong class="font-mono text-lg font-black text-emerald-300">
+                                {{ blockSummaryData.totalWeightKg | number: '1.0-2' }} kg total
+                              </strong>
+                              @if (blockSummaryData.averageWeightKg !== null) {
+                                <strong class="font-mono text-emerald-200">
+                                  {{ blockSummaryData.averageWeightKg | number: '1.0-2' }} kg
+                                  average
+                                </strong>
+                              }
+                              <span class="text-xs text-slate-500">
+                                {{ blockSummaryData.recordedCount }} of
+                                {{ blockSummaryData.expectedCount }} blocks recorded
+                              </span>
+                              @if (blockSummaryData.complete) {
+                                <span class="font-bold text-emerald-300">All weights complete</span>
+                              }
+                            </div>
+                          </td>
+                        </tr>
+                      }
+
+                      @if (historyBatchId() === batch.id) {
+                        <tr class="bg-sky-950/20">
+                          <td class="border-b border-slate-800 px-5 py-4" colspan="10">
+                            <p class="text-xs font-bold uppercase tracking-wider text-sky-300">
+                              Shift {{ shift.shift_number }} / Round {{ batch.round_number }} stage
+                              history
+                            </p>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                              @for (event of batch.production_batch_stage_events; track event.id) {
+                                <span
+                                  class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm"
+                                >
+                                  <strong>{{ stageLabel(event.stage) }}</strong>
+                                  · {{ event.changed_at | date: 'd MMM, HH:mm' }}
+                                </span>
+                              }
+                            </div>
+                          </td>
+                        </tr>
+                      }
+
+                      @if (packingBatchId() === batch.id) {
+                        <tr class="bg-emerald-950/25">
+                          <td class="border-b border-slate-800 px-5 py-5" colspan="10">
+                            <form
+                              class="flex flex-wrap items-end gap-4"
+                              [formGroup]="packingForm"
+                              (ngSubmit)="savePacking(batch)"
+                            >
+                              <div class="mr-2">
+                                <p class="font-bold text-emerald-200">Add board packing entry</p>
+                                <p class="text-xs text-slate-400">
+                                  Multiple SKUs can be added to this round.
+                                </p>
+                              </div>
+                              <label class="min-w-64 flex-1">
+                                <span class="mb-1 block text-xs font-bold uppercase text-slate-400"
+                                  >Compatible SKU</span
+                                >
+                                <select
+                                  class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5"
+                                  formControlName="skuId"
+                                >
+                                  @for (sku of compatibleSkus(batch); track sku.id) {
+                                    <option [value]="sku.id">
+                                      {{ sku.code }} — {{ sku.description }}
+                                    </option>
+                                  }
+                                </select>
+                              </label>
+                              <label class="w-36">
+                                <span class="mb-1 block text-xs font-bold uppercase text-slate-400"
+                                  >Cases</span
+                                >
+                                <input
+                                  class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5"
+                                  type="number"
+                                  min="0"
+                                  formControlName="cases"
+                                />
+                              </label>
+                              <label class="w-44">
+                                <span class="mb-1 block text-xs font-bold uppercase text-slate-400"
+                                  >Loose packets</span
+                                >
+                                <input
+                                  class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5"
+                                  type="number"
+                                  min="0"
+                                  formControlName="loosePackets"
+                                />
+                              </label>
+                              <button
+                                class="rounded-lg bg-emerald-500 px-4 py-2.5 font-bold text-slate-950 disabled:opacity-50"
+                                type="submit"
+                                [disabled]="saving() || compatibleSkus(batch).length === 0"
+                              >
+                                {{ saving() ? 'Saving…' : 'Save packing' }}
+                              </button>
+                            </form>
+                          </td>
+                        </tr>
+                      }
+                    } @empty {
+                      <tr>
+                        <td class="px-5 py-10 text-center text-slate-400" colspan="10">
+                          No rounds yet. Use <strong>+ Add round</strong>; the round number will be
+                          generated automatically.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </article>
+        } @empty {
+          <div class="rounded-2xl border border-dashed border-slate-700 px-5 py-14 text-center">
+            <p class="text-lg font-bold">No production shifts yet.</p>
+            <p class="mt-2 text-sm text-slate-400">
+              Create a shift from an accepted milk receipt to begin the board.
+            </p>
+          </div>
+        }
+      </section>
+    }
+  </div>
+</main>

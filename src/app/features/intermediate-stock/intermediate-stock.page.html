@@ -1,0 +1,585 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 px-4 py-7 text-slate-100 sm:px-6">
+  <div class="mx-auto max-w-7xl">
+    <a class="text-sm font-semibold text-emerald-400 hover:text-emerald-300" routerLink="/"
+      >← Factory workspace</a
+    >
+
+    <header class="mt-5 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+          Traceable cold stock
+        </p>
+        <h1 class="mt-2 text-3xl font-bold">Intermediate stock and cutting</h1>
+        <p class="mt-2 max-w-2xl text-slate-400">
+          Allocate production output into cut stock, PAN111, and process loss while preserving its
+          original milk-lot and production-round ancestry.
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <button
+          class="rounded-xl border border-slate-700 px-4 py-3 font-bold hover:bg-slate-900"
+          type="button"
+          [disabled]="productionBatches().length === 0"
+          (click)="
+            showRecoveredCreamForm.set(!showRecoveredCreamForm()); showCuttingForm.set(false)
+          "
+        >
+          {{ showRecoveredCreamForm() ? 'Cancel' : 'Record recovered cream' }}
+        </button>
+        <button
+          class="rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+          type="button"
+          [disabled]="uncutLots().length === 0"
+          (click)="showCuttingForm.set(!showCuttingForm()); showRecoveredCreamForm.set(false)"
+        >
+          {{ showCuttingForm() ? 'Cancel' : 'Record cutting' }}
+        </button>
+      </div>
+    </header>
+
+    @if (errorMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+    @if (successMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-emerald-900 bg-emerald-950/60 px-4 py-3 text-emerald-200"
+        role="status"
+      >
+        {{ successMessage() }}
+      </p>
+    }
+
+    @if (showRecoveredCreamForm()) {
+      <form
+        class="mt-6 grid gap-4 rounded-2xl border border-sky-900 bg-slate-900 p-5 md:grid-cols-2 lg:grid-cols-5"
+        [formGroup]="recoveredCreamForm"
+        (ngSubmit)="recordRecoveredCream()"
+      >
+        <div class="md:col-span-2 lg:col-span-5">
+          <h2 class="text-xl font-bold">Record recovered cream</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            Creates a usable co-product lot traceable to its production round.
+          </p>
+        </div>
+        <label class="md:col-span-2">
+          <span class="mb-1 block text-sm font-medium">Production round</span>
+          <select
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="batchId"
+          >
+            <option value="">Select production round</option>
+            @for (batch of productionBatches(); track batch.id) {
+              <option [value]="batch.id">
+                {{ batch.batch_code }} · {{ batch.products?.name }}
+              </option>
+            }
+          </select>
+        </label>
+        <label>
+          <span class="mb-1 block text-sm font-medium">Recovered weight (kg)</span>
+          <input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="number"
+            min="0.001"
+            step="0.1"
+            formControlName="quantity"
+          />
+        </label>
+        <label>
+          <span class="mb-1 block text-sm font-medium">Location</span>
+          <select
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="destinationLocationId"
+          >
+            <option value="">Select location</option>
+            @for (location of locations(); track location.id) {
+              <option [value]="location.id">{{ location.name }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          <span class="mb-1 block text-sm font-medium">Recovered at</span>
+          <input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="datetime-local"
+            formControlName="occurredAt"
+          />
+        </label>
+        <label class="md:col-span-2 lg:col-span-4">
+          <span class="mb-1 block text-sm font-medium">Notes</span>
+          <input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="notes"
+          />
+        </label>
+        <div class="self-end">
+          <button
+            class="w-full rounded-lg bg-sky-500 px-4 py-2 font-bold text-slate-950 disabled:opacity-50"
+            type="submit"
+            [disabled]="saving()"
+          >
+            Record cream
+          </button>
+        </div>
+      </form>
+    }
+
+    @if (showCuttingForm()) {
+      <form
+        class="mt-6 rounded-2xl border border-emerald-900 bg-slate-900 p-5"
+        [formGroup]="cuttingForm"
+        (ngSubmit)="recordCutting()"
+      >
+        <div>
+          <h2 class="text-xl font-bold">Cutting and allocation transaction</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            Every kilogram must be allocated to usable output, PAN111, or a recorded loss.
+          </p>
+        </div>
+
+        <div class="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <label class="block md:col-span-2">
+            <span class="mb-2 block text-sm font-medium">Source production output</span>
+            <select
+              #sourceLotSelect
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="sourceLotId"
+              (change)="selectSource(sourceLotSelect.value)"
+            >
+              <option value="">Select uncut production output</option>
+              @for (lot of uncutLots(); track lot.id) {
+                <option [value]="lot.id">
+                  {{ lot.production_batches?.batch_code }} — {{ lot.current_quantity }}
+                  {{ lot.units_of_measure?.code }} available
+                </option>
+              }
+            </select>
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium">Source weight (kg)</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="number"
+              min="0.001"
+              step="0.1"
+              formControlName="sourceQuantity"
+            />
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium">Occurred at</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="datetime-local"
+              formControlName="occurredAt"
+            />
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium">Cut by</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="performedBy"
+              placeholder="Team member name"
+            />
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium">Cutting type</span>
+            <select
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="cutType"
+            >
+              <option value="400 g">400 g format</option>
+              <option value="200 g">200 g format</option>
+              <option value="blocks">Blocks</option>
+              <option value="SPP pieces">SPP pieces</option>
+              <option value="mixed allocation">Mixed allocation</option>
+              <option value="fresh pack exception">Fresh-pack exception</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium">Process loss (kg)</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="number"
+              min="0"
+              step="0.1"
+              formControlName="lossQuantity"
+            />
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium">Loss reason</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="lossReason"
+              placeholder="Required when loss is recorded"
+            />
+          </label>
+        </div>
+
+        <div class="mt-6 border-t border-slate-800 pt-5" formArrayName="outputs">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="font-bold">Cutting outputs</h3>
+              <p class="text-sm text-slate-400">Add as many allocations as the round produced.</p>
+            </div>
+            <div class="flex gap-2">
+              <button
+                class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-800"
+                type="button"
+                (click)="addOutput('primary')"
+              >
+                + Cut output
+              </button>
+              <button
+                class="rounded-lg border border-amber-800 px-3 py-2 text-sm font-bold text-amber-200 hover:bg-amber-950"
+                type="button"
+                (click)="addOutput('pan111')"
+              >
+                + PAN111
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-4 grid gap-3">
+            @for (output of cuttingOutputs.controls; track output; let index = $index) {
+              <div
+                class="grid gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 md:grid-cols-[0.8fr_1.3fr_0.7fr_1.2fr_auto]"
+                [formGroupName]="index"
+              >
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Kind</span>
+                  <select
+                    class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                    formControlName="kind"
+                  >
+                    <option value="primary">Usable cut stock</option>
+                    <option value="pan111">PAN111</option>
+                  </select>
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Label</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                    formControlName="label"
+                    placeholder="e.g. MPAN400 or SPP cut"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500"
+                    >Weight kg</span
+                  >
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                    type="number"
+                    min="0.001"
+                    step="0.1"
+                    formControlName="quantity"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500"
+                    >Location</span
+                  >
+                  <select
+                    class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                    formControlName="destinationLocationId"
+                  >
+                    <option value="">Select location</option>
+                    @for (location of locations(); track location.id) {
+                      <option [value]="location.id">{{ location.name }}</option>
+                    }
+                  </select>
+                </label>
+                <button
+                  class="self-end rounded-lg border border-red-900 px-3 py-2 text-sm text-red-300 disabled:opacity-30"
+                  type="button"
+                  [disabled]="cuttingOutputs.length === 1"
+                  (click)="removeOutput(index)"
+                >
+                  Remove
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div
+          class="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border px-4 py-3"
+          [class.border-emerald-800]="cuttingIsReconciled()"
+          [class.bg-emerald-950]="cuttingIsReconciled()"
+          [class.border-amber-800]="!cuttingIsReconciled()"
+          [class.bg-amber-950]="!cuttingIsReconciled()"
+        >
+          <div>
+            <p class="text-xs font-bold uppercase text-slate-400">Reconciliation</p>
+            <p class="font-mono font-bold">
+              {{ cuttingReconciled() | number: '1.0-3' }} kg allocated ·
+              {{ cuttingDifference() | number: '1.0-3' }} kg remaining
+            </p>
+          </div>
+          <button
+            class="rounded-xl bg-emerald-500 px-5 py-3 font-bold text-slate-950 disabled:opacity-50"
+            type="submit"
+            [disabled]="saving() || !cuttingIsReconciled()"
+          >
+            {{ saving() ? 'Recording…' : 'Record cutting transaction' }}
+          </button>
+        </div>
+
+        <label class="mt-4 block">
+          <span class="mb-2 block text-sm font-medium">Notes</span>
+          <textarea
+            class="min-h-20 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            formControlName="notes"
+          ></textarea>
+        </label>
+      </form>
+    }
+
+    @if (transferringLot(); as lot) {
+      <form
+        class="mt-6 grid gap-4 rounded-2xl border border-sky-900 bg-slate-900 p-5 md:grid-cols-[1.4fr_0.7fr_1fr_1fr_auto]"
+        [formGroup]="transferForm"
+        (ngSubmit)="transferStock()"
+      >
+        <div>
+          <p class="text-xs font-bold uppercase text-sky-400">Stock transfer</p>
+          <p class="mt-1 font-mono font-bold">{{ lot.lot_code }}</p>
+          <p class="text-sm text-slate-400">
+            {{ lot.current_quantity }} {{ lot.units_of_measure?.code }} in
+            {{ lot.storage_locations?.name }}
+          </p>
+        </div>
+        <label>
+          <span class="mb-1 block text-sm font-medium">Quantity</span>
+          <input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            type="number"
+            min="0.001"
+            [max]="lot.current_quantity"
+            step="0.1"
+            formControlName="quantity"
+          />
+        </label>
+        <label>
+          <span class="mb-1 block text-sm font-medium">Destination</span>
+          <select
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="destinationLocationId"
+          >
+            <option value="">Select location</option>
+            @for (location of locations(); track location.id) {
+              <option [value]="location.id" [disabled]="location.id === lot.storage_locations?.id">
+                {{ location.name }}
+              </option>
+            }
+          </select>
+        </label>
+        <label>
+          <span class="mb-1 block text-sm font-medium">Reference</span>
+          <input
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            formControlName="reference"
+          />
+        </label>
+        <div class="flex items-end gap-2">
+          <button
+            class="rounded-lg bg-sky-500 px-4 py-2 font-bold text-slate-950 disabled:opacity-50"
+            type="submit"
+            [disabled]="saving()"
+          >
+            Transfer
+          </button>
+          <button
+            class="rounded-lg border border-slate-700 px-4 py-2 font-bold"
+            type="button"
+            (click)="transferringLot.set(null)"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    }
+
+    <section class="mt-7 grid gap-3 sm:grid-cols-3">
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Available lots</p>
+        <p class="mt-1 text-2xl font-bold">{{ availableLots().length }}</p>
+      </article>
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Available weight</p>
+        <p class="mt-1 text-2xl font-bold text-emerald-300">
+          {{ totalAvailable() | number: '1.0-1' }} kg
+        </p>
+      </article>
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">PAN111 available</p>
+        <p class="mt-1 text-2xl font-bold text-amber-300">
+          {{ pan111Available() | number: '1.0-1' }} kg
+        </p>
+      </article>
+    </section>
+
+    <section class="mt-8">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold">Current intermediate stock</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            Oldest available stock is marked as the FIFO recommendation.
+          </p>
+        </div>
+        <div class="grid w-full gap-3 sm:grid-cols-2 md:w-auto">
+          <label>
+            <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Location</span>
+            <select
+              #locationSelect
+              class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+              (change)="locationFilter.set(locationSelect.value)"
+            >
+              <option value="">All locations</option>
+              @for (location of locations(); track location.id) {
+                <option [value]="location.id">{{ location.name }}</option>
+              }
+            </select>
+          </label>
+          <label>
+            <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Product</span>
+            <select
+              #productSelect
+              class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+              (change)="productFilter.set(productSelect.value)"
+            >
+              <option value="">All products</option>
+              @for (product of productOptions(); track product.code) {
+                <option [value]="product.code">{{ product.name }}</option>
+              }
+            </select>
+          </label>
+        </div>
+      </div>
+
+      @if (loading()) {
+        <p class="mt-5 text-slate-400">Loading intermediate stock…</p>
+      } @else {
+        <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          @for (lot of filteredLots(); track lot.id) {
+            <article
+              class="rounded-2xl border bg-slate-900 p-5"
+              [class.border-emerald-600]="lot.id === fifoRecommendedId()"
+              [class.border-slate-800]="lot.id !== fifoRecommendedId()"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <p class="font-bold">{{ lot.products?.name }}</p>
+                    @if (lot.id === fifoRecommendedId()) {
+                      <span
+                        class="rounded-full bg-emerald-950 px-2 py-1 text-xs font-bold text-emerald-300"
+                        >Use first · FIFO</span
+                      >
+                    }
+                  </div>
+                  <p class="mt-1 font-mono text-xs text-slate-400">{{ lot.lot_code }}</p>
+                </div>
+                <span class="rounded-lg bg-slate-800 px-2 py-1 text-xs font-bold">
+                  {{ lot.products?.variant || lot.products?.code }}
+                </span>
+              </div>
+              <div class="mt-5 grid grid-cols-2 gap-3">
+                <div>
+                  <p class="text-xs font-bold uppercase text-slate-500">Balance</p>
+                  <p class="mt-1 font-mono text-xl font-bold text-emerald-300">
+                    {{ lot.current_quantity }} {{ lot.units_of_measure?.code }}
+                  </p>
+                  <p class="text-xs text-slate-500">of {{ lot.produced_quantity }} produced</p>
+                </div>
+                <div>
+                  <p class="text-xs font-bold uppercase text-slate-500">Location</p>
+                  <p class="mt-1 font-bold">{{ lot.storage_locations?.name }}</p>
+                </div>
+              </div>
+              <div class="mt-4 rounded-lg bg-slate-950 px-3 py-2 text-sm">
+                <p>
+                  Milk {{ lot.production_batches?.source_lots?.lot_code }} · Shift
+                  {{ lot.production_batches?.production_shifts?.shift_number }} · Round
+                  {{ lot.production_batches?.round_number }}
+                </p>
+                <p class="mt-1 text-xs text-slate-500">
+                  Produced {{ lot.produced_at | date: 'd MMM y, HH:mm' }}
+                </p>
+              </div>
+              @if (lot.display_label) {
+                <p class="mt-3 text-sm text-slate-300">{{ lot.display_label }}</p>
+              }
+              <button
+                class="mt-4 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-800"
+                type="button"
+                (click)="beginTransfer(lot)"
+              >
+                Transfer stock
+              </button>
+            </article>
+          } @empty {
+            <div
+              class="rounded-2xl border border-dashed border-slate-700 px-5 py-12 text-center md:col-span-2 xl:col-span-3"
+            >
+              <p class="font-bold">No available intermediate stock matches these filters.</p>
+              <p class="mt-2 text-sm text-slate-400">
+                Record gross output on the production board to create the first uncut lot.
+              </p>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="mt-10">
+      <h2 class="text-xl font-bold">Recent cutting transactions</h2>
+      <div class="mt-4 overflow-hidden rounded-2xl border border-slate-800">
+        @for (transformation of transformations(); track transformation.id) {
+          <article class="border-b border-slate-800 bg-slate-900 p-5 last:border-b-0">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="font-mono font-bold">
+                  {{ transformation.production_batches?.batch_code }}
+                </p>
+                <p class="mt-1 text-sm text-slate-400">
+                  {{ transformation.cut_type }} · Cut by {{ transformation.performed_by }} ·
+                  {{ transformation.occurred_at | date: 'd MMM y, HH:mm' }}
+                </p>
+              </div>
+              <p class="font-mono font-bold">
+                {{ transformation.source_quantity }} {{ transformation.units_of_measure?.code }}
+              </p>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+              @for (output of transformation.transformation_outputs; track output.id) {
+                <span class="rounded-lg bg-slate-800 px-3 py-2 text-sm">
+                  {{ output.output_label }}:
+                  <strong>{{ output.quantity }} kg</strong>
+                  → {{ output.storage_locations?.name }}
+                </span>
+              }
+              @if (transformation.loss_quantity > 0) {
+                <span class="rounded-lg bg-red-950 px-3 py-2 text-sm text-red-200">
+                  Loss: <strong>{{ transformation.loss_quantity }} kg</strong> ·
+                  {{ transformation.loss_reason }}
+                </span>
+              }
+            </div>
+          </article>
+        } @empty {
+          <p class="bg-slate-900 px-5 py-8 text-center text-slate-400">
+            No cutting transactions recorded yet.
+          </p>
+        }
+      </div>
+    </section>
+  </div>
+</main>

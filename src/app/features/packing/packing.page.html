@@ -1,0 +1,451 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 px-4 py-7 text-slate-100 sm:px-6">
+  <div class="mx-auto max-w-7xl">
+    <a class="text-sm font-semibold text-emerald-400 hover:text-emerald-300" routerLink="/"
+      >← Factory workspace</a
+    >
+
+    <header class="mt-5 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+          Factory-use MVP
+        </p>
+        <h1 class="mt-2 text-3xl font-bold">Packing and finished stock</h1>
+        <p class="mt-2 max-w-2xl text-slate-400">
+          Pack the oldest eligible intermediate stock, preserve mixed-batch traceability, and record
+          cases and loose packets separately.
+        </p>
+      </div>
+      <button
+        class="rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400"
+        type="button"
+        (click)="showForm.set(!showForm())"
+      >
+        {{ showForm() ? 'Cancel' : 'New packing run' }}
+      </button>
+    </header>
+
+    @if (errorMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+    @if (successMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-emerald-900 bg-emerald-950/60 px-4 py-3 text-emerald-200"
+        role="status"
+      >
+        {{ successMessage() }}
+      </p>
+    }
+
+    @if (showForm()) {
+      <form
+        class="mt-6 rounded-2xl border border-emerald-900 bg-slate-900 p-5"
+        [formGroup]="form"
+        (ngSubmit)="completePacking()"
+      >
+        <div>
+          <h2 class="text-xl font-bold">Complete a packing run</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            Completion consumes intermediate stock and creates finished stock in one transaction.
+          </p>
+        </div>
+
+        <div class="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <label class="block md:col-span-2">
+            <span class="mb-2 block text-sm font-medium">Finished SKU</span>
+            <select
+              #skuSelect
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="skuId"
+              (change)="selectSku(skuSelect.value)"
+            >
+              <option value="">Select SKU</option>
+              @for (sku of skus(); track sku.id) {
+                <option [value]="sku.id">{{ sku.code }} — {{ sku.description }}</option>
+              }
+            </select>
+          </label>
+          <label>
+            <span class="mb-2 block text-sm font-medium">Packed at</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="datetime-local"
+              formControlName="completedAt"
+            />
+          </label>
+          <label>
+            <span class="mb-2 block text-sm font-medium">Operator / team</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="operatorTeam"
+            />
+          </label>
+          <label>
+            <span class="mb-2 block text-sm font-medium">Cases produced</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="number"
+              min="0"
+              step="1"
+              formControlName="cases"
+            />
+          </label>
+          <label>
+            <span class="mb-2 block text-sm font-medium">Loose packets</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="number"
+              min="0"
+              step="1"
+              formControlName="looseUnits"
+            />
+          </label>
+          <label>
+            <span class="mb-2 block text-sm font-medium">Packets per case</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="number"
+              min="1"
+              step="1"
+              formControlName="packetsPerCaseOverride"
+              [placeholder]="configuredPacketsPerCase()?.toString() || 'Required for variable case'"
+            />
+            @if (configuredPacketsPerCase()) {
+              <span class="mt-1 block text-xs text-slate-500">
+                Configured: {{ configuredPacketsPerCase() }} packets/case. Enter only to override.
+              </span>
+            }
+          </label>
+          <label>
+            <span class="mb-2 block text-sm font-medium">Actual packed weight (kg)</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="number"
+              min="0.001"
+              step="0.1"
+              formControlName="actualPackedWeightKg"
+              [placeholder]="
+                expectedWeight() > 0
+                  ? (expectedWeight() | number: '1.0-3') + ' kg calculated'
+                  : 'Required'
+              "
+            />
+          </label>
+        </div>
+
+        <div class="mt-6 border-t border-slate-800 pt-5" formArrayName="sources">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="font-bold">Intermediate stock sources</h3>
+              <p class="text-sm text-slate-400">
+                Multiple lots are supported when batches were mixed.
+              </p>
+            </div>
+            <button
+              class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-800"
+              type="button"
+              [disabled]="!selectedSku()"
+              (click)="addSource()"
+            >
+              + Add source lot
+            </button>
+          </div>
+
+          @if (selectedSku() && eligibleSourceLots().length === 0) {
+            <p
+              class="mt-4 rounded-xl border border-amber-900 bg-amber-950/50 px-4 py-3 text-amber-200"
+            >
+              No eligible {{ selectedSku()?.products?.name }} stock is available. Normal products
+              must be transferred to the Intermediate Freezer before packing.
+            </p>
+          }
+
+          <div class="mt-4 grid gap-3">
+            @for (source of packingSources.controls; track source; let index = $index) {
+              <div
+                class="grid gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 md:grid-cols-[1.7fr_0.7fr_auto]"
+                [formGroupName]="index"
+              >
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500">
+                    Source lot
+                  </span>
+                  <select
+                    #sourceSelect
+                    class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                    formControlName="intermediateLotId"
+                    (change)="fillAvailable(index, sourceSelect.value)"
+                  >
+                    <option value="">Select intermediate lot</option>
+                    @for (lot of eligibleSourceLots(); track lot.id) {
+                      <option [value]="lot.id">
+                        {{ lot.id === fifoRecommendedId() ? 'FIFO · ' : '' }}{{ lot.lot_code }} —
+                        {{ lot.current_quantity }} kg · {{ lot.storage_locations?.name }}
+                      </option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-bold uppercase text-slate-500">
+                    Quantity consumed (kg)
+                  </span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                    type="number"
+                    min="0.001"
+                    step="0.1"
+                    formControlName="quantity"
+                  />
+                </label>
+                <button
+                  class="self-end rounded-lg border border-red-900 px-3 py-2 text-sm text-red-300 disabled:opacity-30"
+                  type="button"
+                  [disabled]="packingSources.length === 1"
+                  (click)="removeSource(index)"
+                >
+                  Remove
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (fifoOverridden()) {
+          <div class="mt-4 rounded-xl border border-amber-800 bg-amber-950/60 p-4 text-amber-100">
+            <p class="font-bold">FIFO warning</p>
+            <p class="mt-1 text-sm">
+              An older eligible lot remains available. You may continue, but this override will be
+              recorded.
+            </p>
+            <label class="mt-3 block">
+              <span class="mb-1 block text-sm font-medium">Override reason (optional)</span>
+              <input
+                class="w-full rounded-lg border border-amber-800 bg-slate-950 px-3 py-2"
+                formControlName="fifoOverrideReason"
+              />
+            </label>
+          </div>
+        }
+
+        <div class="mt-6 grid gap-4 border-t border-slate-800 pt-5 md:grid-cols-2 lg:grid-cols-4">
+          <label>
+            <span class="mb-2 block text-sm font-medium">Wrappers / packets used</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="number"
+              min="0.001"
+              step="1"
+              formControlName="wrappersUsed"
+            />
+          </label>
+          <label>
+            <span class="mb-2 block text-sm font-medium">Cases / boxes used</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              type="number"
+              min="0.001"
+              step="1"
+              formControlName="casesUsed"
+            />
+          </label>
+          <label>
+            <span class="mb-2 block text-sm font-medium">Finished stock location</span>
+            <select
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="destinationLocationId"
+            >
+              <option value="">Select location</option>
+              @for (location of locations(); track location.id) {
+                <option [value]="location.id">{{ location.name }}</option>
+              }
+            </select>
+          </label>
+          <label>
+            <span class="mb-2 block text-sm font-medium">Weight variance reason</span>
+            <input
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="weightVarianceReason"
+              placeholder="Required if output exceeds input"
+            />
+          </label>
+          <label class="md:col-span-2 lg:col-span-4">
+            <span class="mb-2 block text-sm font-medium">Packing notes</span>
+            <textarea
+              class="min-h-20 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="notes"
+            ></textarea>
+          </label>
+        </div>
+
+        <div
+          class="mt-5 grid gap-4 rounded-xl border border-slate-700 bg-slate-950 p-4 sm:grid-cols-4"
+        >
+          <div>
+            <p class="text-xs font-bold uppercase text-slate-500">Packet equivalent</p>
+            <p class="mt-1 font-mono text-xl font-bold text-emerald-300">
+              {{ totalPackets() }} packets
+            </p>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase text-slate-500">Expected weight</p>
+            <p class="mt-1 font-mono text-xl font-bold">
+              {{ expectedWeight() | number: '1.0-3' }} kg
+            </p>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase text-slate-500">Source consumed</p>
+            <p class="mt-1 font-mono text-xl font-bold">{{ sourceTotal() | number: '1.0-3' }} kg</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase text-slate-500">Yield difference</p>
+            <p
+              class="mt-1 font-mono text-xl font-bold"
+              [class.text-red-300]="weightDifference() < 0"
+              [class.text-amber-300]="weightDifference() >= 0"
+            >
+              {{ weightDifference() | number: '1.0-3' }} kg
+            </p>
+          </div>
+        </div>
+
+        <button
+          class="mt-5 rounded-xl bg-emerald-500 px-5 py-3 font-bold text-slate-950 disabled:opacity-50"
+          type="submit"
+          [disabled]="saving()"
+        >
+          {{ saving() ? 'Completing…' : 'Complete packing and create finished stock' }}
+        </button>
+      </form>
+    }
+
+    <section class="mt-7 grid gap-3 sm:grid-cols-3">
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">
+          Available source lots
+        </p>
+        <p class="mt-1 text-2xl font-bold">{{ sourceLots().length }}</p>
+      </article>
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Finished stock lots</p>
+        <p class="mt-1 text-2xl font-bold">{{ finishedLots().length }}</p>
+      </article>
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">
+          Available finished packets
+        </p>
+        <p class="mt-1 text-2xl font-bold text-emerald-300">
+          {{ availableFinishedPackets() }}
+        </p>
+      </article>
+    </section>
+
+    <section class="mt-9">
+      <h2 class="text-xl font-bold">Finished stock</h2>
+      @if (loading()) {
+        <p class="mt-4 text-slate-400">Loading packing records…</p>
+      } @else {
+        <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          @for (lot of finishedLots(); track lot.id) {
+            <article class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="font-bold">{{ lot.skus?.description }}</p>
+                  <p class="mt-1 font-mono text-xs text-slate-400">{{ lot.lot_code }}</p>
+                </div>
+                <span
+                  class="rounded-lg bg-emerald-950 px-2 py-1 text-xs font-bold text-emerald-300"
+                >
+                  {{ lot.skus?.code }}
+                </span>
+              </div>
+              <div class="mt-5 grid grid-cols-2 gap-3">
+                <div>
+                  <p class="text-xs font-bold uppercase text-slate-500">Packing result</p>
+                  <p class="mt-1 font-bold">
+                    {{ lot.case_quantity }} cases + {{ lot.loose_unit_quantity }} loose
+                  </p>
+                  <p class="text-xs text-slate-500">{{ lot.packet_equivalent }} packets total</p>
+                </div>
+                <div>
+                  <p class="text-xs font-bold uppercase text-slate-500">Available</p>
+                  <p class="mt-1 font-mono text-xl font-bold text-emerald-300">
+                    {{ lot.current_packet_quantity }} packets
+                  </p>
+                </div>
+              </div>
+              <p class="mt-4 text-sm text-slate-400">
+                {{ lot.packed_weight_kg }} kg · {{ lot.storage_locations?.name }} ·
+                {{ lot.produced_at | date: 'd MMM y, HH:mm' }}
+              </p>
+            </article>
+          } @empty {
+            <div
+              class="rounded-2xl border border-dashed border-slate-700 px-5 py-12 text-center md:col-span-2 xl:col-span-3"
+            >
+              <p class="font-bold">No finished stock has been packed yet.</p>
+              <p class="mt-1 text-sm text-slate-400">
+                Complete the first packing run to create finished stock.
+              </p>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="mt-10">
+      <h2 class="text-xl font-bold">Recent packing runs</h2>
+      <div class="mt-4 overflow-hidden rounded-2xl border border-slate-800">
+        @for (run of packingRuns(); track run.id) {
+          <article
+            class="grid gap-4 border-b border-slate-800 bg-slate-900 p-5 last:border-b-0 lg:grid-cols-[1.2fr_1fr_1fr_1.5fr]"
+          >
+            <div>
+              <p class="font-bold">{{ run.skus?.code }} — {{ run.skus?.description }}</p>
+              <p class="mt-1 text-xs text-slate-500">
+                {{ run.completed_at | date: 'd MMM y, HH:mm' }} · {{ run.operator_team }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs font-bold uppercase text-slate-500">Packed</p>
+              <p class="mt-1 font-bold">
+                {{ run.cases_produced }} cases + {{ run.loose_units_produced }} loose
+              </p>
+              <p class="text-xs text-slate-500">
+                {{ run.total_packet_equivalent }} packets · {{ run.actual_packed_weight_kg }} kg
+              </p>
+            </div>
+            <div>
+              <p class="text-xs font-bold uppercase text-slate-500">Input / variance</p>
+              <p class="mt-1 font-mono">
+                {{ run.input_quantity_kg }} kg / {{ run.yield_variance_kg }} kg
+              </p>
+              @if (run.fifo_overridden) {
+                <p class="mt-1 text-xs font-bold text-amber-300">FIFO overridden</p>
+              }
+            </div>
+            <div>
+              <p class="text-xs font-bold uppercase text-slate-500">Source lots</p>
+              <p class="mt-1 text-sm">
+                @for (source of run.packing_run_sources; track source.intermediate_lots?.lot_code) {
+                  <span class="mr-2 inline-block">
+                    {{ source.intermediate_lots?.lot_code }}:
+                    <strong>{{ source.quantity_consumed }} kg</strong>
+                  </span>
+                }
+              </p>
+            </div>
+          </article>
+        } @empty {
+          <p class="bg-slate-900 px-5 py-8 text-center text-slate-400">
+            No packing runs recorded yet.
+          </p>
+        }
+      </div>
+    </section>
+  </div>
+</main>

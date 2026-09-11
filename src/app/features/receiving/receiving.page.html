@@ -1,0 +1,859 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 px-5 py-8 text-slate-100">
+  <div class="mx-auto max-w-6xl">
+    <a class="text-sm font-semibold text-emerald-400 hover:text-emerald-300" routerLink="/"
+      >← Factory workspace</a
+    >
+    <div class="mt-5 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+          Raw material receiving
+        </p>
+        <h1 class="mt-2 text-3xl font-bold">Milk and cream lots</h1>
+        <p class="mt-2 text-slate-400">Record each receipt as a traceable source lot.</p>
+      </div>
+      <button
+        class="rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400"
+        type="button"
+        (click)="showForm.set(!showForm())"
+      >
+        {{ showForm() ? 'Cancel' : 'Receive source lot' }}
+      </button>
+    </div>
+
+    @if (errorMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+    @if (successMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-emerald-900 bg-emerald-950/60 px-4 py-3 text-emerald-200"
+        role="status"
+      >
+        {{ successMessage() }}
+      </p>
+    }
+
+    @if (showForm()) {
+      <form
+        class="mt-7 grid gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2"
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+      >
+        <label class="block"
+          ><span class="mb-2 block text-sm font-medium">Material</span
+          ><select
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            formControlName="lotType"
+          >
+            <option value="milk">Raw milk</option>
+            <option value="purchased_cream">Purchased cream</option>
+          </select></label
+        >
+        <label class="block"
+          ><span class="mb-2 block text-sm font-medium">Lot / batch code</span
+          ><input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            formControlName="lotCode"
+            placeholder="e.g. 030926"
+        /></label>
+        <label class="block"
+          ><span class="mb-2 block text-sm font-medium">Invoice number</span
+          ><input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            formControlName="invoiceNumber"
+            placeholder="Supplier invoice number"
+        /></label>
+        <label class="block"
+          ><span class="mb-2 block text-sm font-medium">Milk / cream received from</span
+          ><input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            formControlName="receivedFrom"
+            placeholder="Farm, dairy, or supplier name"
+        /></label>
+        <label class="block"
+          ><span class="mb-2 block text-sm font-medium">Received date and time</span
+          ><input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            type="datetime-local"
+            formControlName="receivedAt"
+        /></label>
+        <label class="block"
+          ><span class="mb-2 block text-sm font-medium">Quantity (L)</span
+          ><input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            type="number"
+            min="0.001"
+            step="0.1"
+            formControlName="receivedQuantity"
+        /></label>
+        <label class="block"
+          ><span class="mb-2 block text-sm font-medium">Receipt decision</span
+          ><select
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            formControlName="status"
+          >
+            <option value="accepted">Accepted</option>
+            <option value="rejected">Rejected</option>
+          </select></label
+        >
+        <label class="block"
+          ><span class="mb-2 block text-sm font-medium">Notes</span
+          ><input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+            formControlName="notes"
+        /></label>
+        <div class="sm:col-span-2">
+          <button
+            class="rounded-xl bg-emerald-500 px-5 py-3 font-bold text-slate-950 disabled:opacity-50"
+            type="submit"
+            [disabled]="submitting()"
+          >
+            {{ submitting() ? 'Recording…' : 'Record source lot' }}
+          </button>
+        </div>
+      </form>
+    }
+
+    <section class="mt-10">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 class="text-xl font-bold">Recent receipts</h2>
+          <p class="mt-1 text-sm text-slate-500">
+            Accepted milk totals exclude rejected receipts. Expand a row for its production detail.
+          </p>
+        </div>
+      </div>
+      @if (loading()) {
+        <p class="mt-4 text-slate-400">Loading source lots…</p>
+      } @else {
+        <div class="mt-4 overflow-x-auto border border-slate-800 bg-slate-900">
+          <table class="w-full min-w-[1100px] border-collapse text-left text-sm">
+            <thead
+              class="sticky top-0 z-10 bg-slate-950 text-xs uppercase tracking-wider text-slate-400"
+            >
+              <tr>
+                <th
+                  class="sticky left-0 z-20 min-w-44 border-b border-r border-slate-700 bg-slate-950 px-3 py-3"
+                  scope="col"
+                >
+                  Receipt
+                </th>
+                <th class="min-w-52 border-b border-r border-slate-700 px-3 py-3" scope="col">
+                  Origin / invoice
+                </th>
+                <th class="border-b border-r border-slate-700 px-3 py-3 text-right" scope="col">
+                  Received
+                </th>
+                <th class="border-b border-r border-slate-700 px-3 py-3 text-right" scope="col">
+                  Milk used in production
+                </th>
+                <th class="border-b border-r border-slate-700 px-3 py-3 text-right" scope="col">
+                  Milk sold
+                </th>
+                <th class="border-b border-r border-slate-700 px-3 py-3 text-right" scope="col">
+                  Milk left / unallocated
+                </th>
+                <th class="border-b border-r border-slate-700 px-3 py-3 text-center" scope="col">
+                  Status
+                </th>
+                <th class="border-b border-slate-700 px-3 py-3 text-right" scope="col">Actions</th>
+              </tr>
+            </thead>
+
+            @for (lot of lots(); track lot.id) {
+              @let summary = productionSummary(lot);
+              <tbody class="border-b border-slate-800 last:border-b-0">
+                <tr
+                  class="bg-slate-900 hover:bg-slate-800/70"
+                  [class.bg-emerald-950/20]="isLatestMilk(lot.id)"
+                >
+                  <th
+                    class="sticky left-0 z-[1] border-r border-slate-800 bg-slate-900 px-3 py-3 font-normal"
+                    [class.bg-emerald-950]="isLatestMilk(lot.id)"
+                    scope="row"
+                  >
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono font-bold text-slate-100">{{ lot.lot_code }}</span>
+                      @if (isLatestMilk(lot.id)) {
+                        <span
+                          class="text-[10px] font-bold uppercase tracking-wider text-emerald-400"
+                        >
+                          Latest milk
+                        </span>
+                      }
+                    </div>
+                    <p class="mt-1 whitespace-nowrap text-xs text-slate-500">
+                      {{ lot.received_at | date: 'd MMM y, HH:mm' }} ·
+                      <span class="capitalize">{{ lot.lot_type.replace('_', ' ') }}</span>
+                    </p>
+                  </th>
+                  <td class="border-r border-slate-800 px-3 py-3">
+                    <p class="font-semibold text-slate-200">
+                      {{ lot.received_from || lot.suppliers?.name || '—' }}
+                    </p>
+                    <p class="mt-1 text-xs text-slate-500">
+                      {{ lot.invoice_number || 'No invoice' }}
+                    </p>
+                  </td>
+                  <td
+                    class="border-r border-slate-800 px-3 py-3 text-right font-mono font-semibold"
+                  >
+                    {{ lot.received_quantity | number: '1.0-1' }}
+                    <span class="text-xs text-slate-500">{{ lot.units_of_measure?.code }}</span>
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 text-right font-mono">
+                    @if (lot.lot_type === 'milk') {
+                      {{ summary.milkConsumedLitres | number: '1.0-1' }}
+                      <span class="text-xs text-slate-500">L</span>
+                    } @else {
+                      <span class="text-slate-600">—</span>
+                    }
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 text-right font-mono">
+                    @if (lot.lot_type === 'milk') {
+                      {{ milkSold(lot.source_lot_milk_sales) | number: '1.0-1' }}
+                      <span class="text-xs text-slate-500">L</span>
+                    } @else {
+                      <span class="text-slate-600">—</span>
+                    }
+                  </td>
+                  <td
+                    class="border-r border-slate-800 px-3 py-3 text-right font-mono font-semibold text-emerald-300"
+                  >
+                    {{ remaining(lot) | number: '1.0-1' }}
+                    <span class="text-xs text-slate-500">{{ lot.units_of_measure?.code }}</span>
+                    @if (lot.status === 'closed' && lot.unaccounted_loss_quantity !== null) {
+                      <p class="mt-1 whitespace-nowrap text-[10px] font-sans text-amber-300">
+                        {{ lot.unaccounted_loss_quantity | number: '1.0-1' }}
+                        {{ lot.units_of_measure?.code }} recorded loss
+                      </p>
+                    }
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 text-center">
+                    <span
+                      class="inline-block border px-2 py-1 text-xs font-bold capitalize"
+                      [class.border-emerald-900]="lot.status === 'accepted'"
+                      [class.bg-emerald-950]="lot.status === 'accepted'"
+                      [class.text-emerald-300]="lot.status === 'accepted'"
+                      [class.border-red-900]="lot.status === 'rejected'"
+                      [class.bg-red-950]="lot.status === 'rejected'"
+                      [class.text-red-300]="lot.status === 'rejected'"
+                      [class.border-sky-900]="lot.status === 'closed'"
+                      [class.bg-sky-950]="lot.status === 'closed'"
+                      [class.text-sky-300]="lot.status === 'closed'"
+                    >
+                      {{ lot.status }}
+                    </span>
+                  </td>
+                  <td class="px-3 py-3">
+                    <div class="flex items-center justify-end gap-2">
+                      @if (lot.lot_type === 'milk') {
+                        <button
+                          class="whitespace-nowrap border border-sky-800 px-2 py-1.5 text-xs font-bold text-sky-300 hover:bg-sky-950"
+                          type="button"
+                          [attr.aria-expanded]="isProductionExpanded(lot.id)"
+                          [attr.aria-controls]="'milk-production-' + lot.id"
+                          (click)="toggleProduction(lot.id)"
+                        >
+                          {{ isProductionExpanded(lot.id) ? '− Hide' : '+ Details' }}
+                        </button>
+                      }
+                      @if (auth.hasRole('owner')) {
+                        <button
+                          class="border border-slate-700 px-2 py-1.5 text-xs font-bold hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                          type="button"
+                          [disabled]="!!lot.locked_at || lot.status === 'closed'"
+                          (click)="beginEdit(lot)"
+                        >
+                          {{ editingId() === lot.id ? 'Editing' : 'Edit' }}
+                        </button>
+                        @if (
+                          milkSalesFeatureAvailable() &&
+                          lot.lot_type === 'milk' &&
+                          lot.status === 'accepted' &&
+                          !lot.locked_at
+                        ) {
+                          <button
+                            class="whitespace-nowrap border border-emerald-800 px-2 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-950"
+                            type="button"
+                            (click)="beginMilkSale(lot)"
+                          >
+                            {{ saleLotId() === lot.id ? 'Recording…' : '+ Milk sale' }}
+                          </button>
+                        }
+                        @if (
+                          closeFeatureAvailable() &&
+                          lot.lot_type === 'milk' &&
+                          lot.status === 'accepted' &&
+                          !lot.locked_at
+                        ) {
+                          <button
+                            class="whitespace-nowrap border border-amber-800 px-2 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-950"
+                            type="button"
+                            (click)="beginClose(lot)"
+                          >
+                            {{ closingId() === lot.id ? 'Closing…' : 'Close production' }}
+                          </button>
+                        }
+                      }
+                    </div>
+                  </td>
+                </tr>
+
+                @if (lot.lot_type === 'milk' && isProductionExpanded(lot.id)) {
+                  <tr>
+                    <td class="bg-slate-950/60 p-0" colspan="8">
+                      <section
+                        class="px-4 py-4"
+                        [id]="'milk-production-' + lot.id"
+                        [attr.aria-label]="'Production summary for milk lot ' + lot.lot_code"
+                      >
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                          <h3 class="text-sm font-bold text-slate-200">
+                            Production reconciliation · {{ lot.lot_code }}
+                          </h3>
+                          <span class="text-xs text-slate-500">
+                            Live totals from {{ lot.production_batches.length }}
+                            {{ lot.production_batches.length === 1 ? 'round' : 'rounds' }}
+                          </span>
+                        </div>
+
+                        @if (lot.status === 'closed') {
+                          <div class="mt-3 overflow-x-auto border border-sky-900/70">
+                            <table class="w-full min-w-[720px] border-collapse text-sm">
+                              <tbody>
+                                <tr class="bg-sky-950/25">
+                                  <th
+                                    class="border-r border-sky-900/70 px-3 py-2 text-left text-xs uppercase tracking-wider text-slate-500"
+                                    scope="row"
+                                  >
+                                    Closed at
+                                  </th>
+                                  <td
+                                    class="border-r border-sky-900/70 px-3 py-2 font-mono text-sky-200"
+                                  >
+                                    {{ lot.locked_at | date: 'd MMM y, HH:mm' }}
+                                  </td>
+                                  <th
+                                    class="border-r border-sky-900/70 px-3 py-2 text-left text-xs uppercase tracking-wider text-slate-500"
+                                    scope="row"
+                                  >
+                                    Unaccounted loss / spillage
+                                  </th>
+                                  <td
+                                    class="border-r border-sky-900/70 px-3 py-2 text-right font-mono text-amber-300"
+                                  >
+                                    {{ lot.unaccounted_loss_quantity || 0 | number: '1.0-1' }} L
+                                  </td>
+                                  <th
+                                    class="border-r border-sky-900/70 px-3 py-2 text-left text-xs uppercase tracking-wider text-slate-500"
+                                    scope="row"
+                                  >
+                                    Closure note
+                                  </th>
+                                  <td class="px-3 py-2 text-slate-300">
+                                    {{ lot.closure_notes || '—' }}
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        }
+
+                        <div
+                          class="mt-3 grid gap-4 lg:grid-cols-[minmax(820px,2fr)_minmax(360px,1fr)]"
+                        >
+                          <div class="overflow-x-auto border border-slate-800">
+                            <table class="w-full min-w-[820px] border-collapse text-sm">
+                              <thead
+                                class="bg-slate-900 text-xs uppercase tracking-wider text-slate-500"
+                              >
+                                <tr>
+                                  <th
+                                    class="border-b border-r border-slate-800 px-3 py-2 text-right"
+                                    scope="col"
+                                  >
+                                    Paneer recorded
+                                  </th>
+                                  <th
+                                    class="border-b border-r border-slate-800 px-3 py-2 text-right"
+                                    scope="col"
+                                  >
+                                    Yield (milk/kg paneer)
+                                  </th>
+                                  <th
+                                    class="border-b border-r border-slate-800 px-3 py-2 text-right"
+                                    scope="col"
+                                  >
+                                    Paneer yield per 100 L
+                                  </th>
+                                  <th
+                                    class="border-b border-r border-slate-800 px-3 py-2 text-right"
+                                    scope="col"
+                                  >
+                                    D rounds
+                                  </th>
+                                  <th
+                                    class="border-b border-r border-slate-800 px-3 py-2 text-right"
+                                    scope="col"
+                                  >
+                                    C/S rounds
+                                  </th>
+                                  <th
+                                    class="border-b border-r border-slate-800 px-3 py-2 text-right"
+                                    scope="col"
+                                  >
+                                    Cream
+                                  </th>
+                                  <th
+                                    class="border-b border-r border-slate-800 px-3 py-2 text-right"
+                                    scope="col"
+                                  >
+                                    PAN111
+                                  </th>
+                                  <th
+                                    class="border-b border-slate-800 px-3 py-2 text-right"
+                                    scope="col"
+                                  >
+                                    Paneer for SPP
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr class="bg-slate-950/30 font-mono">
+                                  <td class="border-r border-slate-800 px-3 py-2 text-right">
+                                    {{ summary.paneerProducedKg | number: '1.0-2' }} kg
+                                  </td>
+                                  <td class="border-r border-slate-800 px-3 py-2 text-right">
+                                    @if (summary.litresPerKg !== null) {
+                                      {{ summary.litresPerKg | number: '1.2-2' }} L/kg
+                                    } @else {
+                                      <span class="text-amber-300">Awaiting weights</span>
+                                    }
+                                  </td>
+                                  <td class="border-r border-slate-800 px-3 py-2 text-right">
+                                    @if (summary.yieldKgPer100L !== null) {
+                                      {{ summary.yieldKgPer100L | number: '1.1-2' }} kg/100 L
+                                    } @else {
+                                      <span class="text-amber-300">Awaiting weights</span>
+                                    }
+                                  </td>
+                                  <td
+                                    class="border-r border-slate-800 px-3 py-2 text-right text-amber-300"
+                                  >
+                                    {{ summary.dRounds }}
+                                  </td>
+                                  <td
+                                    class="border-r border-slate-800 px-3 py-2 text-right text-sky-300"
+                                  >
+                                    {{ summary.csRounds }}
+                                  </td>
+                                  <td
+                                    class="border-r border-slate-800 px-3 py-2 text-right text-sky-300"
+                                  >
+                                    {{ summary.creamKg | number: '1.0-2' }} kg
+                                  </td>
+                                  <td
+                                    class="border-r border-slate-800 px-3 py-2 text-right text-amber-300"
+                                  >
+                                    {{ summary.pan111Kg | number: '1.0-2' }} kg
+                                  </td>
+                                  <td class="px-3 py-2 text-right text-violet-300">
+                                    {{ summary.sppPaneerKg | number: '1.0-2' }} kg
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div class="overflow-x-auto border border-slate-800">
+                            <table class="w-full border-collapse text-sm">
+                              <thead
+                                class="bg-slate-900 text-xs uppercase tracking-wider text-slate-500"
+                              >
+                                <tr>
+                                  <th
+                                    class="border-b border-r border-slate-800 px-3 py-2"
+                                    scope="col"
+                                  >
+                                    SKU packed on board
+                                  </th>
+                                  <th
+                                    class="border-b border-r border-slate-800 px-3 py-2 text-right"
+                                    scope="col"
+                                  >
+                                    Cases
+                                  </th>
+                                  <th
+                                    class="border-b border-slate-800 px-3 py-2 text-right"
+                                    scope="col"
+                                  >
+                                    Loose
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                @for (sku of summary.skuTotals; track sku.skuCode) {
+                                  <tr class="border-b border-slate-800 last:border-b-0">
+                                    <th
+                                      class="border-r border-slate-800 px-3 py-2 font-mono font-bold text-emerald-200"
+                                      scope="row"
+                                    >
+                                      {{ sku.skuCode }}
+                                    </th>
+                                    <td
+                                      class="border-r border-slate-800 px-3 py-2 text-right font-mono"
+                                    >
+                                      {{ sku.cases }}
+                                    </td>
+                                    <td class="px-3 py-2 text-right font-mono">
+                                      {{ sku.loosePackets }}
+                                    </td>
+                                  </tr>
+                                } @empty {
+                                  <tr>
+                                    <td class="px-3 py-3 text-center text-slate-500" colspan="3">
+                                      No SKU packing logged yet.
+                                    </td>
+                                  </tr>
+                                }
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                        <p class="mt-2 text-[11px] text-slate-600">
+                          SKU figures are board-declared. Physical corrections remain in Packing
+                          verification because they may combine multiple milk receipts.
+                        </p>
+
+                        <div class="mt-4 overflow-x-auto border border-slate-800">
+                          <table class="w-full min-w-[620px] border-collapse text-sm">
+                            <thead
+                              class="bg-slate-900 text-xs uppercase tracking-wider text-slate-500"
+                            >
+                              <tr>
+                                <th
+                                  class="border-b border-r border-slate-800 px-3 py-2 text-left"
+                                  scope="col"
+                                >
+                                  Milk sale date
+                                </th>
+                                <th
+                                  class="border-b border-r border-slate-800 px-3 py-2 text-left"
+                                  scope="col"
+                                >
+                                  Customer
+                                </th>
+                                <th
+                                  class="border-b border-slate-800 px-3 py-2 text-right"
+                                  scope="col"
+                                >
+                                  Quantity
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (sale of lot.source_lot_milk_sales; track sale.id) {
+                                <tr class="border-b border-slate-800 last:border-b-0">
+                                  <td class="border-r border-slate-800 px-3 py-2 font-mono">
+                                    {{ sale.sale_date | date: 'd MMM y' }}
+                                  </td>
+                                  <td
+                                    class="border-r border-slate-800 px-3 py-2 font-semibold text-slate-200"
+                                  >
+                                    {{ sale.customer }}
+                                  </td>
+                                  <td class="px-3 py-2 text-right font-mono text-emerald-300">
+                                    {{ sale.quantity | number: '1.0-1' }} L
+                                  </td>
+                                </tr>
+                              } @empty {
+                                <tr>
+                                  <td class="px-3 py-3 text-center text-slate-500" colspan="3">
+                                    No milk sales recorded for this receipt.
+                                  </td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+                    </td>
+                  </tr>
+                }
+
+                @if (saleLotId() === lot.id) {
+                  <tr>
+                    <td class="bg-emerald-950/20 p-0" colspan="8">
+                      <form
+                        class="grid items-end gap-4 border-y border-emerald-900/70 p-4 sm:grid-cols-3 lg:grid-cols-[180px_minmax(260px,1fr)_180px_auto]"
+                        [formGroup]="saleForm"
+                        (ngSubmit)="recordMilkSale(lot)"
+                      >
+                        <label>
+                          <span
+                            class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400"
+                            >Date</span
+                          >
+                          <input
+                            class="w-full border border-slate-700 bg-slate-950 px-3 py-2"
+                            type="date"
+                            formControlName="saleDate"
+                          />
+                        </label>
+                        <label>
+                          <span
+                            class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400"
+                            >Customer</span
+                          >
+                          <input
+                            class="w-full border border-slate-700 bg-slate-950 px-3 py-2"
+                            formControlName="customer"
+                          />
+                        </label>
+                        <label>
+                          <span
+                            class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400"
+                            >Quantity (L)</span
+                          >
+                          <input
+                            class="w-full border border-slate-700 bg-slate-950 px-3 py-2"
+                            type="number"
+                            min="0.001"
+                            step="0.1"
+                            formControlName="quantity"
+                          />
+                        </label>
+                        <div class="flex justify-end gap-2 sm:col-span-3 lg:col-span-1">
+                          <button
+                            class="border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-900"
+                            type="button"
+                            [disabled]="recordingSale()"
+                            (click)="cancelMilkSale()"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            class="bg-emerald-400 px-3 py-2 text-sm font-bold text-slate-950 disabled:opacity-50"
+                            type="submit"
+                            [disabled]="recordingSale()"
+                          >
+                            {{ recordingSale() ? 'Saving…' : 'Record sale' }}
+                          </button>
+                        </div>
+                      </form>
+                    </td>
+                  </tr>
+                }
+
+                @if (closingId() === lot.id) {
+                  <tr>
+                    <td class="bg-amber-950/20 p-0" colspan="8">
+                      <form
+                        class="grid items-end gap-4 border-y border-amber-900/70 p-4 lg:grid-cols-[minmax(300px,1fr)_minmax(320px,1fr)_auto]"
+                        [formGroup]="closeForm"
+                        (ngSubmit)="closeProduction(lot)"
+                      >
+                        <div>
+                          <h3 class="font-bold text-amber-200">
+                            Close milk production · {{ lot.lot_code }}
+                          </h3>
+                          <p class="mt-1 text-sm text-slate-300">
+                            <strong class="font-mono text-amber-300">
+                              {{ remaining(lot) | number: '1.0-1' }} L
+                            </strong>
+                            will be recorded as unaccounted process loss/spillage.
+                          </p>
+                          <p class="mt-1 text-xs text-slate-500">
+                            This permanently locks this milk receipt and every linked shift and
+                            round.
+                          </p>
+                        </div>
+                        <label>
+                          <span
+                            class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400"
+                          >
+                            Closure note (optional)
+                          </span>
+                          <input
+                            class="w-full border border-slate-700 bg-slate-950 px-3 py-2"
+                            formControlName="closureNotes"
+                            placeholder="e.g. Normal process loss and floor spillage"
+                          />
+                        </label>
+                        <div class="flex justify-end gap-2">
+                          <button
+                            class="border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-900"
+                            type="button"
+                            [disabled]="closing()"
+                            (click)="cancelClose()"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            class="bg-amber-400 px-3 py-2 text-sm font-bold text-slate-950 disabled:opacity-50"
+                            type="submit"
+                            [disabled]="closing()"
+                          >
+                            {{ closing() ? 'Closing…' : 'Confirm and lock' }}
+                          </button>
+                        </div>
+                      </form>
+                    </td>
+                  </tr>
+                }
+
+                @if (editingId() === lot.id) {
+                  <tr>
+                    <td class="bg-slate-950/60 p-0" colspan="8">
+                      <form
+                        class="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4"
+                        [formGroup]="editForm"
+                        (ngSubmit)="submitEdit(lot)"
+                      >
+                        <div class="sm:col-span-2 lg:col-span-4">
+                          <h3 class="font-bold">Edit receipt {{ lot.lot_code }}</h3>
+                          <p class="mt-1 text-sm text-slate-400">
+                            Quantity cannot be reduced below stock already allocated or consumed.
+                          </p>
+                        </div>
+                        <label>
+                          <span class="mb-1 block text-sm font-medium">Material</span>
+                          <select
+                            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                            formControlName="lotType"
+                          >
+                            <option value="milk">Raw milk</option>
+                            <option value="purchased_cream">Purchased cream</option>
+                          </select>
+                        </label>
+                        <label>
+                          <span class="mb-1 block text-sm font-medium">Lot / batch code</span>
+                          <input
+                            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                            formControlName="lotCode"
+                          />
+                        </label>
+                        <label>
+                          <span class="mb-1 block text-sm font-medium">Invoice number</span>
+                          <input
+                            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                            formControlName="invoiceNumber"
+                          />
+                        </label>
+                        <label>
+                          <span class="mb-1 block text-sm font-medium">Received from</span>
+                          <input
+                            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                            formControlName="receivedFrom"
+                          />
+                        </label>
+                        <label>
+                          <span class="mb-1 block text-sm font-medium">Received date and time</span>
+                          <input
+                            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                            type="datetime-local"
+                            formControlName="receivedAt"
+                          />
+                        </label>
+                        <label>
+                          <span class="mb-1 block text-sm font-medium">Quantity (L)</span>
+                          <input
+                            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                            type="number"
+                            min="0.001"
+                            step="0.1"
+                            formControlName="receivedQuantity"
+                          />
+                        </label>
+                        <label>
+                          <span class="mb-1 block text-sm font-medium">Receipt decision</span>
+                          <select
+                            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                            formControlName="status"
+                          >
+                            <option value="accepted">Accepted</option>
+                            <option value="rejected">Rejected</option>
+                          </select>
+                        </label>
+                        <label>
+                          <span class="mb-1 block text-sm font-medium">Notes</span>
+                          <input
+                            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                            formControlName="notes"
+                          />
+                        </label>
+                        <div class="flex gap-2 sm:col-span-2 lg:col-span-4">
+                          <button
+                            class="rounded-lg bg-emerald-500 px-4 py-2 font-bold text-slate-950 disabled:opacity-50"
+                            type="submit"
+                            [disabled]="submitting()"
+                          >
+                            {{ submitting() ? 'Saving…' : 'Save changes' }}
+                          </button>
+                          <button
+                            class="rounded-lg border border-slate-700 px-4 py-2 font-bold"
+                            type="button"
+                            (click)="cancelEdit()"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            } @empty {
+              <tbody>
+                <tr>
+                  <td class="px-5 py-8 text-center text-slate-400" colspan="8">
+                    No milk or cream receipts recorded yet.
+                  </td>
+                </tr>
+              </tbody>
+            }
+
+            @if (lots().length > 0) {
+              @let totals = milkTableTotals();
+              <tfoot class="bg-slate-950 font-semibold text-slate-200">
+                <tr>
+                  <th
+                    class="sticky left-0 z-[1] border-r border-t border-slate-700 bg-slate-950 px-3 py-3"
+                    scope="row"
+                  >
+                    Accepted milk totals
+                  </th>
+                  <td class="border-r border-t border-slate-700 px-3 py-3 text-xs text-slate-500">
+                    Displayed receipts
+                  </td>
+                  <td class="border-r border-t border-slate-700 px-3 py-3 text-right font-mono">
+                    {{ totals.receivedLitres | number: '1.0-1' }} L
+                  </td>
+                  <td class="border-r border-t border-slate-700 px-3 py-3 text-right font-mono">
+                    {{ totals.milkConsumedLitres | number: '1.0-1' }} L
+                  </td>
+                  <td class="border-r border-t border-slate-700 px-3 py-3 text-right font-mono">
+                    {{ totals.milkSoldLitres | number: '1.0-1' }} L
+                  </td>
+                  <td
+                    class="border-r border-t border-slate-700 px-3 py-3 text-right font-mono text-emerald-300"
+                  >
+                    {{ totals.remainingLitres | number: '1.0-1' }} L
+                  </td>
+                  <td class="border-r border-t border-slate-700 px-3 py-3"></td>
+                  <td class="border-t border-slate-700 px-3 py-3"></td>
+                </tr>
+              </tfoot>
+            }
+          </table>
+        </div>
+      }
+    </section>
+  </div>
+</main>

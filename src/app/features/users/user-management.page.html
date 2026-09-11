@@ -1,0 +1,192 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 px-4 py-7 text-slate-100 sm:px-6">
+  <div class="mx-auto max-w-7xl">
+    <a class="text-sm font-semibold text-emerald-400 hover:text-emerald-300" routerLink="/"
+      >← Factory workspace</a
+    >
+
+    <header class="mt-5 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+          Owner controls
+        </p>
+        <h1 class="mt-2 text-3xl font-bold">Users</h1>
+        <p class="mt-2 max-w-2xl text-slate-400">
+          Review registered accounts, control access, and assign each approved user an operational
+          role.
+        </p>
+      </div>
+      <span
+        class="rounded-xl border border-amber-900 bg-amber-950/40 px-4 py-3 text-sm text-amber-200"
+      >
+        Only Owners can make changes
+      </span>
+    </header>
+
+    @if (errorMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+    @if (successMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-emerald-900 bg-emerald-950/60 px-4 py-3 text-emerald-200"
+        role="status"
+      >
+        {{ successMessage() }}
+      </p>
+    }
+
+    <section class="mt-7 grid gap-3 sm:grid-cols-3">
+      <button
+        class="rounded-2xl border p-4 text-left transition"
+        [class.border-amber-700]="statusFilter() === 'pending'"
+        [class.bg-amber-950]="statusFilter() === 'pending'"
+        [class.border-slate-800]="statusFilter() !== 'pending'"
+        [class.bg-slate-900]="statusFilter() !== 'pending'"
+        type="button"
+        (click)="setFilter(statusFilter() === 'pending' ? 'all' : 'pending')"
+      >
+        <p class="text-xs font-bold uppercase tracking-wider text-amber-400">Awaiting approval</p>
+        <p class="mt-2 text-3xl font-black">{{ counts().pending }}</p>
+      </button>
+      <button
+        class="rounded-2xl border p-4 text-left transition"
+        [class.border-emerald-700]="statusFilter() === 'approved'"
+        [class.bg-emerald-950]="statusFilter() === 'approved'"
+        [class.border-slate-800]="statusFilter() !== 'approved'"
+        [class.bg-slate-900]="statusFilter() !== 'approved'"
+        type="button"
+        (click)="setFilter(statusFilter() === 'approved' ? 'all' : 'approved')"
+      >
+        <p class="text-xs font-bold uppercase tracking-wider text-emerald-400">Approved</p>
+        <p class="mt-2 text-3xl font-black">{{ counts().approved }}</p>
+      </button>
+      <button
+        class="rounded-2xl border p-4 text-left transition"
+        [class.border-red-800]="statusFilter() === 'disapproved'"
+        [class.bg-red-950]="statusFilter() === 'disapproved'"
+        [class.border-slate-800]="statusFilter() !== 'disapproved'"
+        [class.bg-slate-900]="statusFilter() !== 'disapproved'"
+        type="button"
+        (click)="setFilter(statusFilter() === 'disapproved' ? 'all' : 'disapproved')"
+      >
+        <p class="text-xs font-bold uppercase tracking-wider text-red-400">Disapproved</p>
+        <p class="mt-2 text-3xl font-black">{{ counts().disapproved }}</p>
+      </button>
+    </section>
+
+    <section class="mt-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-xl font-bold">
+          {{ statusFilter() === 'all' ? 'All registered users' : statusLabel(statusFilter()) }}
+        </h2>
+        @if (statusFilter() !== 'all') {
+          <button
+            class="text-sm font-bold text-emerald-400 hover:text-emerald-300"
+            type="button"
+            (click)="setFilter('all')"
+          >
+            Show all users
+          </button>
+        }
+      </div>
+
+      @if (loading()) {
+        <div class="mt-4 animate-pulse rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <div class="h-5 w-48 rounded bg-slate-800"></div>
+          <div class="mt-5 h-16 rounded bg-slate-800"></div>
+        </div>
+      } @else {
+        <div class="mt-4 space-y-3">
+          @for (user of filteredUsers(); track user.id) {
+            <article
+              class="grid gap-4 rounded-2xl border bg-slate-900 p-5 lg:grid-cols-[1.6fr_0.8fr_0.8fr_auto] lg:items-end"
+              [class.border-amber-800]="user.approval_status === 'pending'"
+              [class.border-slate-800]="user.approval_status !== 'pending'"
+            >
+              <div class="min-w-0 self-center">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="truncate font-bold">{{ user.display_name || 'Unnamed user' }}</h3>
+                  @if (isCurrentUser(user)) {
+                    <span class="rounded-full bg-sky-950 px-2 py-1 text-xs font-bold text-sky-300"
+                      >You</span
+                    >
+                  }
+                  <span
+                    class="rounded-full px-2 py-1 text-xs font-bold"
+                    [class.bg-amber-950]="user.approval_status === 'pending'"
+                    [class.text-amber-300]="user.approval_status === 'pending'"
+                    [class.bg-emerald-950]="user.approval_status === 'approved'"
+                    [class.text-emerald-300]="user.approval_status === 'approved'"
+                    [class.bg-red-950]="user.approval_status === 'disapproved'"
+                    [class.text-red-300]="user.approval_status === 'disapproved'"
+                  >
+                    {{ statusLabel(user.approval_status) }}
+                  </span>
+                </div>
+                <p class="mt-1 truncate text-sm text-slate-300">{{ user.email }}</p>
+                <p class="mt-2 text-xs text-slate-500">
+                  Registered {{ user.registered_at | date: 'd MMM y, HH:mm' }}
+                  @if (user.last_sign_in_at) {
+                    · Last sign-in {{ user.last_sign_in_at | date: 'd MMM y, HH:mm' }}
+                  }
+                </p>
+              </div>
+
+              <label>
+                <span class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500"
+                  >Status</span
+                >
+                <select
+                  #statusSelect
+                  class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 disabled:opacity-50"
+                  [value]="draftFor(user).status"
+                  [disabled]="isCurrentUser(user)"
+                  (change)="setStatus(user, statusSelect.value)"
+                >
+                  @for (status of statuses; track status.value) {
+                    <option [value]="status.value">{{ status.label }}</option>
+                  }
+                </select>
+              </label>
+
+              <label>
+                <span class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500"
+                  >Role</span
+                >
+                <select
+                  #roleSelect
+                  class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 disabled:opacity-50"
+                  [value]="draftFor(user).role"
+                  [disabled]="isCurrentUser(user)"
+                  (change)="setRole(user, roleSelect.value)"
+                >
+                  @for (role of roles; track role.value) {
+                    <option [value]="role.value">{{ role.label }}</option>
+                  }
+                </select>
+              </label>
+
+              <button
+                class="rounded-lg bg-emerald-500 px-4 py-2 font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-40"
+                type="button"
+                [disabled]="isCurrentUser(user) || !hasChanges(user) || savingUserId() !== null"
+                (click)="save(user)"
+              >
+                {{ savingUserId() === user.id ? 'Saving…' : 'Save' }}
+              </button>
+            </article>
+          } @empty {
+            <div class="rounded-2xl border border-dashed border-slate-700 px-5 py-12 text-center">
+              <p class="font-bold">No users in this category.</p>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  </div>
+</main>

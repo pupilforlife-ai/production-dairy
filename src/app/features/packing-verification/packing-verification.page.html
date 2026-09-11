@@ -1,0 +1,681 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 px-4 py-7 text-slate-100 sm:px-6">
+  <div class="mx-auto max-w-[1600px]">
+    <a class="text-sm font-semibold text-emerald-400 hover:text-emerald-300" routerLink="/"
+      >← Factory workspace</a
+    >
+
+    <header class="mt-5">
+      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+        Physical stock control
+      </p>
+      <h1 class="mt-2 text-3xl font-bold">Packed stock by SKU</h1>
+      <p class="mt-2 max-w-3xl text-slate-400">
+        Each row combines that SKU across every unsent production round. Open the contributing
+        rounds when you need traceability; verify the physical total only once at SKU level.
+      </p>
+    </header>
+
+    @if (errorMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+    @if (successMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-emerald-900 bg-emerald-950/60 px-4 py-3 text-emerald-200"
+        role="status"
+      >
+        {{ successMessage() }}
+      </p>
+    }
+
+    <section class="mt-6 overflow-x-auto border border-slate-800" aria-label="Verification summary">
+      <table class="w-full min-w-[640px] border-collapse text-center text-sm">
+        <thead class="bg-slate-950 text-xs uppercase tracking-wider text-slate-500">
+          <tr>
+            <th class="border-b border-r border-slate-800 px-4 py-2" scope="col">SKUs to verify</th>
+            <th class="border-b border-r border-slate-800 px-4 py-2" scope="col">Verified SKUs</th>
+            <th class="border-b border-r border-slate-800 px-4 py-2" scope="col">
+              Distribution groups
+            </th>
+            <th class="border-b border-slate-800 px-4 py-2" scope="col">Source uncertain</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="bg-slate-900 font-mono text-lg font-black">
+            <td class="border-r border-slate-800 px-4 py-2 text-amber-300">{{ pendingCount() }}</td>
+            <td class="border-r border-slate-800 px-4 py-2 text-sky-300">{{ verifiedCount() }}</td>
+            <td class="border-r border-slate-800 px-4 py-2 text-emerald-300">{{ sentCount() }}</td>
+            <td class="px-4 py-2 text-orange-300">{{ uncertainCount() }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+      <div class="border-b border-slate-800 px-4 py-3">
+        <h2 class="font-bold text-slate-100">All unsent packed stock</h2>
+        <p class="mt-1 text-xs text-slate-500">
+          New board entries are automatically added to their SKU total. A verified SKU must be
+          rechecked if new packing is logged before distribution.
+        </p>
+      </div>
+
+      @if (loading()) {
+        <p class="px-5 py-12 text-center text-slate-400">Loading packed stock…</p>
+      } @else if (rows().length === 0) {
+        <div class="px-5 py-12 text-center">
+          <p class="font-bold text-slate-200">There is no unsent packed stock.</p>
+          <p class="mt-2 text-sm text-slate-500">
+            New production-board packing appears here automatically.
+          </p>
+        </div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[1050px] border-collapse text-left text-sm">
+            <thead class="bg-slate-950/70 text-xs uppercase tracking-wider text-slate-400">
+              <tr>
+                <th class="px-4 py-3">SKU</th>
+                <th class="px-4 py-3">Contributing rounds</th>
+                <th class="px-4 py-3">Packed</th>
+                @if (canVerify()) {
+                  <th class="min-w-80 px-4 py-3">Corrected</th>
+                }
+                <th class="px-4 py-3">Status</th>
+                @if (canVerify()) {
+                  <th class="px-4 py-3 text-right">Action</th>
+                }
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800">
+              @for (row of rows(); track row.key) {
+                <tr class="align-top hover:bg-slate-800/35">
+                  <td class="px-4 py-4">
+                    <p class="text-lg font-black text-slate-100">{{ row.skuCode }}</p>
+                    <p class="mt-1 text-xs text-slate-400">{{ row.skuDescription }}</p>
+                    <p class="mt-1 text-xs text-slate-600">{{ row.productName }}</p>
+                  </td>
+                  <td class="px-4 py-4">
+                    <button
+                      class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800"
+                      type="button"
+                      (click)="toggleExpanded(row)"
+                    >
+                      {{ isExpanded(row) ? 'Hide' : 'Show' }} {{ row.contributions.length }}
+                      {{ row.contributions.length === 1 ? 'round' : 'rounds' }}
+                    </button>
+                    <p class="mt-2 text-xs text-slate-500">
+                      {{ row.entryCount }} board {{ row.entryCount === 1 ? 'entry' : 'entries' }}
+                    </p>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4">
+                    <p class="font-bold text-slate-100">
+                      {{ row.declaredCases }} cases · {{ row.declaredLoosePackets }} loose
+                    </p>
+                    <p class="mt-1 text-xs text-slate-500">
+                      Latest {{ row.lastPackedAt | date: 'd MMM y, HH:mm' }}
+                    </p>
+                  </td>
+                  @if (canVerify()) {
+                    <td class="px-4 py-4">
+                      <div class="flex flex-wrap gap-2">
+                        <label>
+                          <span class="mb-1 block text-xs text-slate-500">Cases</span>
+                          <input
+                            class="w-20 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2"
+                            type="number"
+                            min="0"
+                            step="1"
+                            [value]="row.correctedCases"
+                            (input)="updateNumber(row, 'correctedCases', $any($event.target).value)"
+                          />
+                        </label>
+                        <label>
+                          <span class="mb-1 block text-xs text-slate-500">Loose packets</span>
+                          <input
+                            class="w-28 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2"
+                            type="number"
+                            min="0"
+                            step="1"
+                            [value]="row.correctedLoosePackets"
+                            (input)="
+                              updateNumber(row, 'correctedLoosePackets', $any($event.target).value)
+                            "
+                          />
+                        </label>
+                        @if (row.variableCaseAllowed) {
+                          <label>
+                            <span class="mb-1 block text-xs font-semibold text-amber-300">
+                              Packets / case
+                            </span>
+                            <input
+                              class="w-28 rounded-lg border border-amber-700 bg-slate-950 px-2 py-2"
+                              type="number"
+                              min="1"
+                              step="1"
+                              placeholder="Required"
+                              [value]="row.packetsPerCase ?? ''"
+                              (input)="updatePacketsPerCase(row, $any($event.target).value)"
+                            />
+                          </label>
+                          <label>
+                            <span class="mb-1 block text-xs font-semibold text-amber-300">
+                              Case weight (kg)
+                            </span>
+                            <input
+                              class="w-32 rounded-lg border border-amber-700 bg-slate-950 px-2 py-2"
+                              type="number"
+                              min="0.001"
+                              step="0.1"
+                              placeholder="Required"
+                              [value]="row.caseWeightKg ?? ''"
+                              (input)="updateCaseWeight(row, $any($event.target).value)"
+                            />
+                          </label>
+                        }
+                        <div class="self-end pb-2 text-xs text-slate-500">
+                          @if (packetTotal(row) !== null) {
+                            {{ packetTotal(row) | number: '1.0-0' }} packets total
+                          } @else {
+                            <span class="text-amber-300">Case size not configured</span>
+                          }
+                        </div>
+                      </div>
+                      <label class="mt-3 flex items-start gap-2 text-xs text-orange-200">
+                        <input
+                          class="mt-0.5 size-4 accent-orange-500"
+                          type="checkbox"
+                          [checked]="row.sourceRoundUncertain"
+                          (change)="updateUncertain(row, $any($event.target).checked)"
+                        />
+                        One or more source rounds are uncertain
+                      </label>
+                      @if (hasVariance(row) || row.sourceRoundUncertain || row.correctionReason) {
+                        <label class="mt-2 block">
+                          <span class="mb-1 block text-xs text-slate-500">
+                            Reason{{
+                              hasVariance(row) || row.sourceRoundUncertain ? ' (required)' : ''
+                            }}
+                          </span>
+                          <input
+                            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs"
+                            type="text"
+                            maxlength="500"
+                            placeholder="Explain the physical count or uncertain tray sources"
+                            [value]="row.correctionReason"
+                            (input)="updateReason(row, $any($event.target).value)"
+                          />
+                        </label>
+                      }
+                    </td>
+                  }
+                  <td class="whitespace-nowrap px-4 py-4">
+                    @if (row.needsReverification) {
+                      <span
+                        class="inline-flex rounded-full bg-amber-950 px-3 py-1 text-xs font-bold text-amber-300"
+                        >New packing — recheck</span
+                      >
+                    } @else if (row.verification) {
+                      <span
+                        class="inline-flex rounded-full bg-sky-950 px-3 py-1 text-xs font-bold text-sky-300"
+                        >Verified</span
+                      >
+                    } @else {
+                      <span
+                        class="inline-flex rounded-full bg-amber-950 px-3 py-1 text-xs font-bold text-amber-300"
+                        >Awaiting verification</span
+                      >
+                    }
+                    @if (row.sourceRoundUncertain) {
+                      <span
+                        class="mt-2 block w-fit rounded-full bg-orange-950 px-3 py-1 text-xs font-bold text-orange-300"
+                        >Source uncertain</span
+                      >
+                    }
+                  </td>
+                  @if (canVerify()) {
+                    <td class="min-w-64 px-4 py-4 text-right">
+                      <button
+                        class="rounded-lg border border-sky-700 px-3 py-2 text-xs font-bold text-sky-200 hover:bg-sky-950 disabled:opacity-50"
+                        type="button"
+                        [disabled]="savingKey() !== null || sendingKey() !== null"
+                        (click)="verify(row)"
+                      >
+                        {{
+                          savingKey() === row.key
+                            ? 'Saving…'
+                            : row.verification
+                              ? 'Recheck SKU'
+                              : 'Verify SKU'
+                        }}
+                      </button>
+                      @if (row.verification && !row.needsReverification) {
+                        @if (row.correctedLoosePackets > 0) {
+                          <label
+                            class="mt-3 flex items-start justify-end gap-2 text-xs text-amber-200"
+                          >
+                            <input
+                              class="mt-0.5 size-4 accent-amber-500"
+                              type="checkbox"
+                              [checked]="row.includeLooseInDistribution"
+                              (change)="
+                                updateDistributionException(row, {
+                                  includeLooseInDistribution: $any($event.target).checked,
+                                })
+                              "
+                            />
+                            Include loose packets by exception
+                          </label>
+                          @if (row.includeLooseInDistribution) {
+                            <input
+                              class="mt-2 w-full rounded-lg border border-amber-800 bg-slate-950 px-2 py-2 text-xs"
+                              type="text"
+                              maxlength="500"
+                              placeholder="Exception reason (required)"
+                              [value]="row.distributionExceptionReason"
+                              (input)="
+                                updateDistributionException(row, {
+                                  distributionExceptionReason: $any($event.target).value,
+                                })
+                              "
+                            />
+                          } @else {
+                            <p class="mt-2 text-xs text-slate-500">
+                              {{ row.correctedLoosePackets }} loose retained in finished production
+                            </p>
+                          }
+                        }
+                        <button
+                          class="mt-2 block w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+                          type="button"
+                          [disabled]="
+                            savingKey() !== null ||
+                            sendingKey() !== null ||
+                            (row.correctedCases === 0 && !row.includeLooseInDistribution)
+                          "
+                          (click)="sendToDistribution(row)"
+                        >
+                          @if (sendingKey() === row.key) {
+                            Sending…
+                          } @else if (row.includeLooseInDistribution) {
+                            Send cases + loose
+                          } @else {
+                            Send full cases only
+                          }
+                        </button>
+                        @if (row.correctedCases === 0 && !row.includeLooseInDistribution) {
+                          <p class="mt-1 text-xs text-amber-300">No full cases available</p>
+                        }
+                      } @else {
+                        <button
+                          class="mt-2 block w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-black text-slate-950 opacity-40"
+                          type="button"
+                          disabled
+                        >
+                          {{
+                            row.needsReverification
+                              ? 'Recheck SKU before distribution'
+                              : 'Verify SKU before distribution'
+                          }}
+                        </button>
+                      }
+                      @if (rowErrorKey() === row.key && rowErrorMessage()) {
+                        <p
+                          class="mt-2 rounded-lg border border-red-800 bg-red-950/70 px-2 py-2 text-left text-xs font-semibold text-red-200"
+                          role="alert"
+                        >
+                          {{ rowErrorMessage() }}
+                        </p>
+                      }
+                    </td>
+                  }
+                </tr>
+                @if (isExpanded(row)) {
+                  <tr class="bg-slate-950/45">
+                    <td class="px-4 py-4" [attr.colspan]="canVerify() ? 6 : 4">
+                      <p class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Round declarations included in {{ row.skuCode }}
+                      </p>
+                      <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        @for (round of row.contributions; track round.batchId) {
+                          <article class="rounded-xl border border-slate-800 bg-slate-900 p-3">
+                            <p class="font-bold">
+                              Shift {{ round.shiftNumber ?? '—' }} · Round
+                              {{ round.roundNumber ?? '—' }}
+                            </p>
+                            <p class="mt-1 font-mono text-xs text-slate-500">
+                              {{ round.batchCode }}
+                            </p>
+                            <p class="mt-2 text-sm text-slate-300">
+                              {{ round.cases }} cases · {{ round.loosePackets }} loose
+                            </p>
+                            <p class="mt-1 text-xs text-slate-600">{{ round.teamName }}</p>
+                          </article>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <section class="mt-6 overflow-hidden border border-slate-800 bg-slate-900">
+      <div class="border-b border-slate-800 px-4 py-3">
+        <h2 class="font-bold text-slate-100">Loose stock consolidation</h2>
+        <p class="mt-1 text-xs text-slate-500">
+          Retained loose packets are pooled by SKU. Consolidation uses the oldest verified stock
+          first, creates complete cases, and transfers those cases to distribution while preserving
+          every source milk lot.
+        </p>
+      </div>
+
+      @if (loading()) {
+        <p class="px-5 py-8 text-center text-sm text-slate-500">Loading loose stock…</p>
+      } @else if (loosePools().length === 0) {
+        <p class="px-5 py-8 text-center text-sm text-slate-500">
+          There are no retained loose packets waiting for consolidation.
+        </p>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[980px] border-collapse text-left text-sm">
+            <thead class="bg-slate-950/70 text-xs uppercase tracking-wider text-slate-400">
+              <tr>
+                <th class="border-b border-r border-slate-800 px-4 py-3" scope="col">SKU</th>
+                <th class="border-b border-r border-slate-800 px-4 py-3 text-right" scope="col">
+                  Packets / case
+                </th>
+                <th class="border-b border-r border-slate-800 px-4 py-3 text-right" scope="col">
+                  Loose available
+                </th>
+                <th class="border-b border-r border-slate-800 px-4 py-3 text-right" scope="col">
+                  Complete cases possible
+                </th>
+                <th class="border-b border-r border-slate-800 px-4 py-3 text-right" scope="col">
+                  Remainder
+                </th>
+                @if (canVerify()) {
+                  <th class="border-b border-slate-800 px-4 py-3 text-right" scope="col">Action</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (pool of loosePools(); track pool.sku_id) {
+                <tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/35">
+                  <th class="border-r border-slate-800 px-4 py-3" scope="row">
+                    <p class="font-mono font-black text-slate-100">{{ pool.sku_code }}</p>
+                    <p class="mt-1 text-xs font-normal text-slate-500">
+                      {{ pool.sku_description }}
+                    </p>
+                  </th>
+                  <td class="border-r border-slate-800 px-4 py-3 text-right font-mono">
+                    {{ pool.packets_per_case ?? '—' }}
+                  </td>
+                  <td
+                    class="border-r border-slate-800 px-4 py-3 text-right font-mono font-bold text-amber-300"
+                  >
+                    {{ pool.available_loose_packets }}
+                  </td>
+                  <td
+                    class="border-r border-slate-800 px-4 py-3 text-right font-mono font-bold text-emerald-300"
+                  >
+                    {{ pool.possible_cases }}
+                  </td>
+                  <td class="border-r border-slate-800 px-4 py-3 text-right font-mono">
+                    {{ pool.remainder_loose_packets }} loose
+                  </td>
+                  @if (canVerify()) {
+                    <td class="px-4 py-3 text-right">
+                      @if (pool.packets_per_case === null) {
+                        <span class="text-xs font-bold text-amber-300"
+                          >Configure case size first</span
+                        >
+                      } @else if (pool.possible_cases === 0) {
+                        <span class="text-xs text-slate-500">
+                          {{ pool.packets_per_case - pool.available_loose_packets }} more needed
+                        </span>
+                      } @else if (pendingConsolidationSkuId() === pool.sku_id) {
+                        <div class="flex items-end justify-end gap-2">
+                          <label class="text-left">
+                            <span class="mb-1 block text-xs text-slate-500">Cases to make</span>
+                            <input
+                              class="w-20 border border-slate-700 bg-slate-950 px-2 py-1.5 text-right font-mono"
+                              type="number"
+                              min="1"
+                              [max]="pool.possible_cases"
+                              step="1"
+                              [value]="consolidationCases(pool)"
+                              (input)="updateConsolidationCases(pool, $any($event.target).value)"
+                            />
+                          </label>
+                          <button
+                            class="border border-slate-700 px-2 py-1.5 text-xs font-bold hover:bg-slate-800"
+                            type="button"
+                            [disabled]="consolidatingSkuId() !== null"
+                            (click)="cancelConsolidation()"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            class="bg-emerald-500 px-3 py-1.5 text-xs font-black text-slate-950 disabled:opacity-50"
+                            type="button"
+                            [disabled]="consolidatingSkuId() !== null"
+                            (click)="consolidateLooseStock(pool)"
+                          >
+                            {{
+                              consolidatingSkuId() === pool.sku_id ? 'Sending…' : 'Confirm and send'
+                            }}
+                          </button>
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500">
+                          Uses
+                          {{ consolidationCases(pool) * (pool.packets_per_case ?? 0) }} loose
+                          packets.
+                        </p>
+                      } @else {
+                        <button
+                          class="border border-emerald-700 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-950"
+                          type="button"
+                          (click)="startConsolidation(pool)"
+                        >
+                          Make full cases
+                        </button>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (consolidationHistory().length > 0) {
+        <div class="border-t border-slate-800 px-4 py-3">
+          <h3 class="text-sm font-bold text-slate-200">Consolidation history</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[900px] border-collapse text-left text-sm">
+            <thead class="bg-slate-950/70 text-xs uppercase tracking-wider text-slate-400">
+              <tr>
+                <th class="border-b border-r border-slate-800 px-4 py-3" scope="col">Reference</th>
+                <th class="border-b border-r border-slate-800 px-4 py-3" scope="col">Date</th>
+                <th class="border-b border-r border-slate-800 px-4 py-3" scope="col">SKU</th>
+                <th class="border-b border-r border-slate-800 px-4 py-3" scope="col">
+                  Source milk lots
+                </th>
+                <th class="border-b border-r border-slate-800 px-4 py-3 text-right" scope="col">
+                  Loose used
+                </th>
+                <th class="border-b border-r border-slate-800 px-4 py-3 text-right" scope="col">
+                  Cases made
+                </th>
+                <th class="border-b border-slate-800 px-4 py-3" scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of consolidationHistory(); track item.id) {
+                <tr class="border-b border-slate-800 last:border-b-0">
+                  <th
+                    class="border-r border-slate-800 px-4 py-3 font-mono text-slate-200"
+                    scope="row"
+                  >
+                    {{ item.consolidation_code }}
+                  </th>
+                  <td class="border-r border-slate-800 px-4 py-3">
+                    {{ item.consolidated_at | date: 'd MMM y, HH:mm' }}
+                  </td>
+                  <td class="border-r border-slate-800 px-4 py-3 font-mono font-bold">
+                    {{ item.sku_code }}
+                  </td>
+                  <td class="border-r border-slate-800 px-4 py-3">
+                    {{ item.source_lot_codes }}
+                  </td>
+                  <td class="border-r border-slate-800 px-4 py-3 text-right font-mono">
+                    {{ item.input_loose_packets }}
+                  </td>
+                  <td
+                    class="border-r border-slate-800 px-4 py-3 text-right font-mono font-bold text-emerald-300"
+                  >
+                    {{ item.output_cases }}
+                  </td>
+                  <td class="px-4 py-3">
+                    <span class="text-xs font-bold text-emerald-300">Sent to distribution</span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <section class="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+      <div class="border-b border-slate-800 px-4 py-3">
+        <h2 class="font-bold text-slate-100">Sent to distribution history</h2>
+        <p class="mt-1 text-xs text-slate-500">
+          Completed SKU verification groups remain traceable here.
+        </p>
+      </div>
+      @if (!loading() && historyRows().length === 0) {
+        <p class="px-5 py-8 text-center text-sm text-slate-500">Nothing has been sent yet.</p>
+      } @else if (historyRows().length > 0) {
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[800px] text-left text-sm">
+            <thead class="bg-slate-950/70 text-xs uppercase tracking-wider text-slate-400">
+              <tr>
+                <th class="px-4 py-3">SKU</th>
+                <th class="px-4 py-3">Rounds</th>
+                <th class="px-4 py-3">Packed</th>
+                @if (canVerify()) {
+                  <th class="px-4 py-3">Corrected</th>
+                }
+                <th class="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800">
+              @for (row of historyRows(); track row.key) {
+                <tr>
+                  <td class="px-4 py-4">
+                    <p class="font-black">{{ row.skuCode }}</p>
+                    <p class="text-xs text-slate-500">{{ row.skuDescription }}</p>
+                  </td>
+                  <td class="px-4 py-4">
+                    <button
+                      class="text-xs font-bold text-sky-300 hover:text-sky-200"
+                      type="button"
+                      (click)="toggleExpanded(row)"
+                    >
+                      {{ isExpanded(row) ? 'Hide' : 'Show' }} {{ row.contributions.length }} rounds
+                    </button>
+                  </td>
+                  <td class="px-4 py-4">
+                    {{ row.declaredCases }} cases · {{ row.declaredLoosePackets }} loose
+                  </td>
+                  @if (canVerify()) {
+                    <td class="px-4 py-4">
+                      <p>
+                        {{ row.correctedCases }} cases · {{ row.correctedLoosePackets }} loose
+                        verified
+                      </p>
+                      <p class="mt-1 text-xs font-semibold text-emerald-300">
+                        Sent: {{ row.verification?.distributed_cases }} cases ·
+                        {{ row.verification?.distributed_loose_packets }} loose
+                      </p>
+                      @if ((row.verification?.retained_loose_packets ?? 0) > 0) {
+                        <p class="mt-1 text-xs font-bold text-amber-300">
+                          Retained: {{ row.verification?.retained_loose_packets }} loose packets
+                        </p>
+                        <input
+                          class="mt-2 w-full rounded-lg border border-amber-800 bg-slate-950 px-2 py-2 text-xs"
+                          type="text"
+                          maxlength="500"
+                          placeholder="Reason to release loose packets"
+                          [value]="row.distributionExceptionReason"
+                          (input)="
+                            updateDistributionException(row, {
+                              distributionExceptionReason: $any($event.target).value,
+                            })
+                          "
+                        />
+                        <button
+                          class="mt-2 rounded-lg border border-amber-700 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-950 disabled:opacity-50"
+                          type="button"
+                          [disabled]="sendingKey() !== null"
+                          (click)="sendRetainedLoose(row)"
+                        >
+                          {{ sendingKey() === row.key ? 'Sending…' : 'Release loose by exception' }}
+                        </button>
+                      }
+                      @if (row.correctionReason) {
+                        <p class="mt-1 max-w-80 text-xs text-slate-500">
+                          {{ row.correctionReason }}
+                        </p>
+                      }
+                      @if (row.verification?.distribution_exception_reason) {
+                        <p class="mt-1 max-w-80 text-xs text-amber-400">
+                          Distribution exception:
+                          {{ row.verification?.distribution_exception_reason }}
+                        </p>
+                      }
+                    </td>
+                  }
+                  <td class="px-4 py-4">
+                    <span
+                      class="rounded-full bg-emerald-950 px-3 py-1 text-xs font-bold text-emerald-300"
+                      >Sent to distribution</span
+                    >
+                    <p class="mt-2 text-xs text-slate-500">
+                      {{ row.verification?.sent_to_distribution_at | date: 'd MMM y, HH:mm' }}
+                    </p>
+                  </td>
+                </tr>
+                @if (isExpanded(row)) {
+                  <tr class="bg-slate-950/45">
+                    <td class="px-4 py-4" [attr.colspan]="canVerify() ? 5 : 4">
+                      <div class="flex flex-wrap gap-2">
+                        @for (round of row.contributions; track round.batchId) {
+                          <span class="rounded-lg border border-slate-800 px-3 py-2 text-xs">
+                            S{{ round.shiftNumber ?? '—' }} · R{{ round.roundNumber ?? '—' }} —
+                            {{ round.cases }} cases · {{ round.loosePackets }} loose
+                          </span>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  </div>
+</main>

@@ -1,0 +1,116 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 px-5 py-8 text-slate-100">
+  <div class="mx-auto max-w-7xl">
+    <a class="text-sm font-semibold text-emerald-400 hover:text-emerald-300" routerLink="/"
+      >← Factory workspace</a
+    >
+    <div class="mt-5 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+          Owner administration
+        </p>
+        <h1 class="mt-2 text-3xl font-bold">Master data</h1>
+        <p class="mt-2 max-w-2xl text-slate-400">
+          Products, SKUs, packaging configurations, and factory storage locations.
+        </p>
+      </div>
+    </div>
+
+    @if (errorMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+
+    @if (loading()) {
+      <p class="mt-10 text-slate-400">Loading master data…</p>
+    } @else {
+      <section class="mt-10">
+        <h2 class="text-xl font-bold">Products and SKUs</h2>
+        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+          @for (product of products(); track product.id) {
+            <article class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {{ product.product_families?.name }} · {{ product.product_type }}
+                  </p>
+                  <h3 class="mt-1 font-bold">{{ product.name }}</h3>
+                  <p class="mt-1 font-mono text-xs text-slate-500">
+                    {{ product.code }}
+                    @if (product.variant) {
+                      · {{ product.variant }}
+                    }
+                  </p>
+                </div>
+                <button
+                  class="rounded-lg border px-3 py-1.5 text-xs font-bold disabled:opacity-50"
+                  [class.border-emerald-700]="product.active"
+                  [class.text-emerald-300]="product.active"
+                  [class.border-slate-700]="!product.active"
+                  [disabled]="savingId() === product.id"
+                  type="button"
+                  (click)="toggleProduct(product)"
+                >
+                  {{ product.active ? 'Active' : 'Inactive' }}
+                </button>
+              </div>
+              @if (product.skus.length) {
+                <div class="mt-4 space-y-2 border-t border-slate-800 pt-4">
+                  @for (sku of product.skus; track sku.id) {
+                    <div class="rounded-xl bg-slate-950 px-3 py-2">
+                      <div class="flex justify-between gap-3 text-sm">
+                        <span class="font-semibold">{{ sku.code }}</span
+                        ><span class="text-slate-400">{{
+                          sku.unit_weight_g
+                            ? sku.unit_weight_g + ' g'
+                            : sku.pieces_per_packet
+                              ? sku.pieces_per_packet + ' pieces'
+                              : ''
+                        }}</span>
+                      </div>
+                      <p class="mt-1 text-xs text-slate-500">
+                        {{ describePackaging(sku.packaging_configs[0]) }}
+                      </p>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="mt-4 border-t border-slate-800 pt-4 text-sm text-amber-300">
+                  Confirmed SKU code still required.
+                </p>
+              }
+            </article>
+          } @empty {
+            <p class="text-slate-400">No products have been configured.</p>
+          }
+        </div>
+      </section>
+
+      <section class="mt-12 pb-10">
+        <h2 class="text-xl font-bold">Storage locations</h2>
+        <div class="mt-4 overflow-hidden rounded-2xl border border-slate-800">
+          @for (location of locations(); track location.id) {
+            <div
+              class="grid gap-1 border-b border-slate-800 bg-slate-900 px-4 py-3 last:border-b-0 sm:grid-cols-[1fr_1fr_auto]"
+            >
+              <div>
+                <p class="font-semibold">{{ location.name }}</p>
+                <p class="font-mono text-xs text-slate-500">{{ location.code }}</p>
+              </div>
+              <p class="text-sm capitalize text-slate-400">
+                {{ location.location_type.replace('_', ' ') }}
+              </p>
+              <p class="text-sm text-slate-400">
+                {{ location.temperature_profiles?.name || 'Ambient / not configured' }}
+              </p>
+            </div>
+          }
+        </div>
+      </section>
+    }
+  </div>
+</main>

@@ -1,0 +1,102 @@
+<main class="grid min-h-screen place-items-center bg-slate-950 px-4 py-10 text-slate-100">
+  <section class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-7 shadow-2xl">
+    <div class="mb-8">
+      <p class="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">Vejoy</p>
+      <h1 class="text-3xl font-bold">
+        {{ mode() === 'signin' ? 'Welcome back' : 'Create your account' }}
+      </h1>
+      <p class="mt-2 text-sm text-slate-400">
+        {{
+          mode() === 'signin'
+            ? 'Sign in with your authorised factory account.'
+            : 'Register with your Vejoy email address.'
+        }}
+      </p>
+    </div>
+    <form class="space-y-5" [formGroup]="form" (ngSubmit)="submit()">
+      @if (mode() === 'signup') {
+        <label class="block">
+          <span class="mb-2 block text-sm font-medium">Your name</span>
+          <input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-emerald-500"
+            type="text"
+            formControlName="displayName"
+            autocomplete="name"
+          />
+        </label>
+      }
+      <label class="block">
+        <span class="mb-2 block text-sm font-medium">Email address</span>
+        <input
+          class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-emerald-500"
+          type="email"
+          formControlName="email"
+          autocomplete="username"
+        />
+      </label>
+      <label class="block">
+        <span class="mb-2 block text-sm font-medium">Password</span>
+        <input
+          class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-emerald-500"
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+        />
+      </label>
+      @if (mode() === 'signup') {
+        <label class="block">
+          <span class="mb-2 block text-sm font-medium">Confirm password</span>
+          <input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-emerald-500"
+            type="password"
+            formControlName="confirmPassword"
+            autocomplete="new-password"
+          />
+        </label>
+      }
+      @if (errorMessage()) {
+        <p
+          class="rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-sm text-red-200"
+          role="alert"
+        >
+          {{ errorMessage() }}
+        </p>
+      }
+      @if (successMessage()) {
+        <p
+          class="rounded-xl border border-emerald-900 bg-emerald-950/60 px-4 py-3 text-sm text-emerald-200"
+          role="status"
+        >
+          {{ successMessage() }}
+        </p>
+      }
+      <button
+        class="w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+        type="submit"
+        [disabled]="submitting()"
+      >
+        {{
+          submitting()
+            ? mode() === 'signin'
+              ? 'Signing in…'
+              : 'Creating account…'
+            : mode() === 'signin'
+              ? 'Sign in'
+              : 'Create account'
+        }}
+      </button>
+    </form>
+    <div class="mt-6 border-t border-slate-800 pt-5 text-center">
+      <p class="text-sm text-slate-400">
+        {{ mode() === 'signin' ? 'Need an account?' : 'Already registered?' }}
+      </p>
+      <button
+        class="mt-2 text-sm font-bold text-emerald-400 hover:text-emerald-300"
+        type="button"
+        (click)="switchMode()"
+      >
+        {{ mode() === 'signin' ? 'Create account' : 'Return to sign in' }}
+      </button>
+    </div>
+  </section>
+</main>

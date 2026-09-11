@@ -1,0 +1,755 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 px-4 py-7 text-slate-100 sm:px-6">
+  <div class="mx-auto max-w-7xl">
+    <a class="text-sm font-semibold text-emerald-400 hover:text-emerald-300" routerLink="/"
+      >← Factory workspace</a
+    >
+
+    <header class="mt-5 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+          Multi-stage genealogy
+        </p>
+        <h1 class="mt-2 text-3xl font-bold">Product transformations</h1>
+        <p class="mt-2 max-w-3xl text-slate-400">
+          Record Halloumi, popper, butter, and ghee process stages. Every input lot, measured
+          control, and generated output lot remains linked through the full process chain.
+        </p>
+      </div>
+      <button
+        class="rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400"
+        type="button"
+        (click)="toggleForm()"
+      >
+        {{ showForm() ? 'Cancel transaction' : 'Record transformation' }}
+      </button>
+    </header>
+
+    @if (errorMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+    @if (successMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-emerald-900 bg-emerald-950/60 px-4 py-3 text-emerald-200"
+        role="status"
+      >
+        {{ successMessage() }}
+      </p>
+    }
+
+    @if (showForm()) {
+      <form
+        class="mt-6 space-y-6 rounded-2xl border border-emerald-900 bg-slate-900 p-5 sm:p-6"
+        [formGroup]="form"
+        (ngSubmit)="record()"
+      >
+        <section>
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold">1. Choose the process stage</h2>
+              <p class="mt-1 text-sm text-slate-400">
+                The stage defines its workflow, not any confidential ingredient quantity.
+              </p>
+            </div>
+            <span class="rounded-full bg-emerald-950 px-3 py-1 text-xs font-bold text-emerald-300">
+              {{ selectedTemplate().productLine }}
+            </span>
+          </div>
+          <label class="mt-4 block">
+            <span class="mb-2 block text-sm font-medium">Process template</span>
+            <select
+              #templateSelect
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="templateKey"
+              (change)="applyTemplate(templateSelect.value)"
+            >
+              @for (template of templates; track template.key) {
+                <option [value]="template.key">
+                  {{ template.productLine }} — {{ template.name }}
+                </option>
+              }
+            </select>
+          </label>
+          <p class="mt-3 rounded-xl bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
+            {{ selectedTemplate().description }}
+          </p>
+          <div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <label>
+              <span class="mb-1 block text-sm font-medium">Occurred at</span>
+              <input
+                class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                type="datetime-local"
+                formControlName="occurredAt"
+              />
+            </label>
+            <label>
+              <span class="mb-1 block text-sm font-medium">Operator or team</span>
+              <input
+                class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                formControlName="performedBy"
+              />
+            </label>
+            <label class="md:col-span-2">
+              <span class="mb-1 block text-sm font-medium">Approved recipe version (optional)</span>
+              <select
+                class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                formControlName="recipeVersionId"
+              >
+                <option value="">No recipe linked</option>
+                @for (version of recipeVersions(); track version.id) {
+                  <option [value]="version.id">{{ recipeLabel(version) }}</option>
+                }
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="border-t border-slate-800 pt-6">
+          <div>
+            <h2 class="text-xl font-bold">2. Allocate consumed inputs</h2>
+            <p class="mt-1 text-sm text-slate-400">
+              Add any combination of process stock, milk or cream, and ingredient inventory.
+            </p>
+          </div>
+
+          <article class="mt-5 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="font-bold">Intermediate stock</h3>
+                <p class="text-xs text-slate-400">
+                  Paneer, Halloumi, filling, butter, and other process lots.
+                </p>
+              </div>
+              <button
+                class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-800"
+                type="button"
+                (click)="addIntermediateInput()"
+              >
+                + Add lot
+              </button>
+            </div>
+            <div class="mt-4 space-y-3" formArrayName="intermediateInputs">
+              @for (row of intermediateInputs.controls; track row; let index = $index) {
+                <div
+                  class="grid gap-3 rounded-lg border border-slate-800 p-3 md:grid-cols-[2fr_1fr_1fr_auto]"
+                  [formGroupName]="index"
+                >
+                  <label>
+                    <span class="mb-1 block text-xs font-medium text-slate-400">Stock lot</span>
+                    <select
+                      #intermediateSelect
+                      class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      formControlName="lotId"
+                      (change)="selectIntermediate(index, intermediateSelect.value)"
+                    >
+                      <option value="">Select a lot</option>
+                      @for (lot of lots(); track lot.id) {
+                        <option [value]="lot.id">
+                          {{ lot.products?.name }} · {{ lot.lot_code }} · {{ lot.current_quantity }}
+                          {{ lot.units_of_measure?.code }}
+                        </option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    <span class="mb-1 block text-xs font-medium text-slate-400"
+                      >Actual quantity</span
+                    >
+                    <input
+                      class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      formControlName="quantity"
+                    />
+                  </label>
+                  <label>
+                    <span class="mb-1 block text-xs font-medium text-slate-400"
+                      >Standard (optional)</span
+                    >
+                    <input
+                      class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      formControlName="standardQuantity"
+                    />
+                  </label>
+                  <button
+                    class="self-end rounded-lg border border-red-900 px-3 py-2 text-sm text-red-300"
+                    type="button"
+                    (click)="removeRow(intermediateInputs, index)"
+                    aria-label="Remove intermediate input"
+                  >
+                    Remove
+                  </button>
+                </div>
+              } @empty {
+                <p
+                  class="rounded-lg border border-dashed border-slate-700 p-4 text-sm text-slate-500"
+                >
+                  No intermediate lots added.
+                </p>
+              }
+            </div>
+          </article>
+
+          <article class="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="font-bold">Milk or purchased cream</h3>
+                <p class="text-xs text-slate-400">
+                  Multiple cream source lots can feed one butter run.
+                </p>
+              </div>
+              <button
+                class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-800"
+                type="button"
+                (click)="addSourceLotInput()"
+              >
+                + Add source lot
+              </button>
+            </div>
+            <div class="mt-4 space-y-3" formArrayName="sourceLotInputs">
+              @for (row of sourceLotInputs.controls; track row; let index = $index) {
+                <div
+                  class="grid gap-3 rounded-lg border border-slate-800 p-3 md:grid-cols-[2fr_1fr_auto]"
+                  [formGroupName]="index"
+                >
+                  <label>
+                    <span class="mb-1 block text-xs font-medium text-slate-400">Source lot</span>
+                    <select
+                      #sourceSelect
+                      class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      formControlName="lotId"
+                      (change)="selectSourceLot(index, sourceSelect.value)"
+                    >
+                      <option value="">Select milk or cream</option>
+                      @for (lot of sourceLots(); track lot.id) {
+                        <option [value]="lot.id">
+                          {{ lot.lot_type === 'milk' ? 'Milk' : 'Purchased cream' }} ·
+                          {{ lot.lot_code }} · {{ lot.available_quantity }}
+                          {{ lot.units_of_measure?.code }} available
+                        </option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    <span class="mb-1 block text-xs font-medium text-slate-400"
+                      >Actual quantity</span
+                    >
+                    <input
+                      class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      formControlName="quantity"
+                    />
+                  </label>
+                  <button
+                    class="self-end rounded-lg border border-red-900 px-3 py-2 text-sm text-red-300"
+                    type="button"
+                    (click)="removeRow(sourceLotInputs, index)"
+                  >
+                    Remove
+                  </button>
+                </div>
+              } @empty {
+                <p
+                  class="rounded-lg border border-dashed border-slate-700 p-4 text-sm text-slate-500"
+                >
+                  No milk or cream source lots added.
+                </p>
+              }
+            </div>
+          </article>
+
+          <article class="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="font-bold">Ingredient inventory</h3>
+                <p class="text-xs text-slate-400">
+                  Consume exact inventory lots and compare actual to standard.
+                </p>
+              </div>
+              <button
+                class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-800"
+                type="button"
+                (click)="addInventoryInput()"
+              >
+                + Add ingredient
+              </button>
+            </div>
+            <div class="mt-4 space-y-3" formArrayName="inventoryInputs">
+              @for (row of inventoryInputs.controls; track row; let index = $index) {
+                <div
+                  class="grid gap-3 rounded-lg border border-slate-800 p-3 md:grid-cols-[2fr_1fr_1fr_auto]"
+                  [formGroupName]="index"
+                >
+                  <label>
+                    <span class="mb-1 block text-xs font-medium text-slate-400"
+                      >Inventory lot and location</span
+                    >
+                    <select
+                      #inventorySelect
+                      class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      formControlName="balanceKey"
+                      (change)="selectInventory(index, inventorySelect.value)"
+                    >
+                      <option value="">Select ingredient stock</option>
+                      @for (balance of inventoryBalances(); track inventoryKey(balance)) {
+                        <option [value]="inventoryKey(balance)">
+                          {{ balance.item_name }} · {{ balance.lot_code }} ·
+                          {{ balance.location_name }} · {{ balance.current_quantity }}
+                          {{ balance.uom_code }}
+                        </option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    <span class="mb-1 block text-xs font-medium text-slate-400"
+                      >Actual quantity</span
+                    >
+                    <input
+                      class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      formControlName="quantity"
+                    />
+                  </label>
+                  <label>
+                    <span class="mb-1 block text-xs font-medium text-slate-400"
+                      >Standard (optional)</span
+                    >
+                    <input
+                      class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      formControlName="standardQuantity"
+                    />
+                  </label>
+                  <button
+                    class="self-end rounded-lg border border-red-900 px-3 py-2 text-sm text-red-300"
+                    type="button"
+                    (click)="removeRow(inventoryInputs, index)"
+                  >
+                    Remove
+                  </button>
+                </div>
+              } @empty {
+                <p
+                  class="rounded-lg border border-dashed border-slate-700 p-4 text-sm text-slate-500"
+                >
+                  No ingredient inventory added.
+                </p>
+              }
+            </div>
+          </article>
+        </section>
+
+        <section class="border-t border-slate-800 pt-6">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold">3. Record generated output lots</h2>
+              <p class="mt-1 text-sm text-slate-400">
+                Every output becomes available intermediate stock.
+              </p>
+            </div>
+            <button
+              class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-800"
+              type="button"
+              (click)="addOutput()"
+            >
+              + Add output
+            </button>
+          </div>
+          <div class="mt-4 space-y-3" formArrayName="outputs">
+            @for (row of outputs.controls; track row; let index = $index) {
+              <div
+                class="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/40 p-4 md:grid-cols-2 lg:grid-cols-6"
+                [formGroupName]="index"
+              >
+                <label class="lg:col-span-2">
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Output product</span>
+                  <select
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="productId"
+                  >
+                    <option value="">Select product</option>
+                    @for (product of products(); track product.id) {
+                      <option [value]="product.id">{{ product.name }} ({{ product.code }})</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Quantity</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    type="number"
+                    min="0.001"
+                    step="0.001"
+                    formControlName="quantity"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Unit</span>
+                  <select
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="uomId"
+                  >
+                    <option value="">Select unit</option>
+                    @for (unit of units(); track unit.id) {
+                      <option [value]="unit.id">{{ unit.code }}</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Output kind</span>
+                  <select
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="kind"
+                  >
+                    <option value="primary">Primary</option>
+                    <option value="pan111">PAN111</option>
+                    <option value="coproduct">Co-product</option>
+                  </select>
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Location</span>
+                  <select
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="locationId"
+                  >
+                    <option value="">Select location</option>
+                    @for (location of locations(); track location.id) {
+                      <option [value]="location.id">{{ location.name }}</option>
+                    }
+                  </select>
+                </label>
+                <label class="lg:col-span-5">
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Output label</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="label"
+                    placeholder="Example: SPP coated — freezer load 1"
+                  />
+                </label>
+                <button
+                  class="self-end rounded-lg border border-red-900 px-3 py-2 text-sm text-red-300 disabled:opacity-40"
+                  type="button"
+                  [disabled]="outputs.length === 1"
+                  (click)="removeRow(outputs, index)"
+                >
+                  Remove
+                </button>
+              </div>
+            }
+          </div>
+        </section>
+
+        <section class="border-t border-slate-800 pt-6">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold">4. Capture process controls</h2>
+              <p class="mt-1 text-sm text-slate-400">
+                Preset targets come from documented process requirements; enter the actual measured
+                value.
+              </p>
+            </div>
+            <button
+              class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-800"
+              type="button"
+              (click)="addControl()"
+            >
+              + Add control
+            </button>
+          </div>
+          <div class="mt-4 space-y-3" formArrayName="controls">
+            @for (row of controls.controls; track row; let index = $index) {
+              <div
+                class="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/40 p-4 md:grid-cols-2 lg:grid-cols-8"
+                [formGroupName]="index"
+              >
+                <label>
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Code</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="code"
+                  />
+                </label>
+                <label class="lg:col-span-2">
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Control</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="label"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Actual number</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    type="number"
+                    step="0.01"
+                    formControlName="numericValue"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Or text result</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="textValue"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Unit</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    formControlName="uomLabel"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Target</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    type="number"
+                    step="0.01"
+                    formControlName="targetValue"
+                  />
+                </label>
+                <button
+                  class="self-end rounded-lg border border-red-900 px-3 py-2 text-sm text-red-300"
+                  type="button"
+                  (click)="removeRow(controls, index)"
+                >
+                  Remove
+                </button>
+                <label>
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Minimum</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    type="number"
+                    step="0.01"
+                    formControlName="minValue"
+                  />
+                </label>
+                <label>
+                  <span class="mb-1 block text-xs font-medium text-slate-400">Maximum</span>
+                  <input
+                    class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    type="number"
+                    step="0.01"
+                    formControlName="maxValue"
+                  />
+                </label>
+              </div>
+            } @empty {
+              <p
+                class="rounded-lg border border-dashed border-slate-700 p-4 text-sm text-slate-500"
+              >
+                No measured controls are required by this template. Add any checks you want
+                retained.
+              </p>
+            }
+          </div>
+        </section>
+
+        <section class="border-t border-slate-800 pt-6">
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium">Transaction notes (optional)</span>
+            <textarea
+              class="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+              formControlName="notes"
+            ></textarea>
+          </label>
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p class="text-sm text-slate-400">
+              Saving is atomic: stock consumption and every output lot are recorded together.
+            </p>
+            <button
+              class="rounded-xl bg-emerald-500 px-5 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+              type="submit"
+              [disabled]="saving()"
+            >
+              {{ saving() ? 'Recording…' : 'Record and create output lots' }}
+            </button>
+          </div>
+        </section>
+      </form>
+    }
+
+    <section class="mt-8">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 class="text-2xl font-bold">Recent transformation genealogy</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            Expand a transaction to inspect its source lots, ingredients, outputs, and controls.
+          </p>
+        </div>
+        <span class="rounded-lg bg-slate-900 px-3 py-2 text-sm text-slate-400">
+          {{ history().length }} recent transactions
+        </span>
+      </div>
+
+      @if (loading()) {
+        <div class="mt-5 animate-pulse rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <div class="h-5 w-64 rounded bg-slate-800"></div>
+          <div class="mt-4 h-12 rounded bg-slate-800"></div>
+        </div>
+      } @else {
+        <div class="mt-5 space-y-3">
+          @for (record of history(); track record.id) {
+            <article class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+              <button
+                class="grid w-full gap-3 p-5 text-left hover:bg-slate-800/60 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-center"
+                type="button"
+                [attr.aria-expanded]="expandedHistoryId() === record.id"
+                (click)="toggleHistory(record.id)"
+              >
+                <div>
+                  <p class="font-bold">{{ record.process_template }}</p>
+                  <p class="mt-1 text-xs text-slate-400">
+                    {{ record.occurred_at | date: 'd MMM y, HH:mm' }} · {{ record.performed_by }}
+                  </p>
+                </div>
+                <p class="text-sm">
+                  <strong>{{ totalInputs(record) }}</strong> input lots
+                </p>
+                <p class="text-sm">
+                  <strong>{{ record.transformation_outputs.length }}</strong> output lots
+                </p>
+                <span class="font-bold text-emerald-400">
+                  {{ expandedHistoryId() === record.id ? 'Hide' : 'Trace' }}
+                </span>
+              </button>
+
+              @if (expandedHistoryId() === record.id) {
+                <div class="border-t border-slate-800 bg-slate-950/50 p-5">
+                  @if (record.recipe_versions) {
+                    <p class="mb-4 text-sm text-emerald-300">
+                      Recipe: {{ record.recipe_versions.recipes?.name }} v{{
+                        record.recipe_versions.version_number
+                      }}
+                    </p>
+                  }
+                  <div class="grid gap-5 lg:grid-cols-3">
+                    <div>
+                      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Consumed inputs
+                      </h3>
+                      <div class="mt-2 space-y-2 text-sm">
+                        @for (input of record.transformation_inputs; track $index) {
+                          <p class="rounded-lg bg-slate-900 p-3">
+                            {{ input.intermediate_lots?.products?.name }} ·
+                            {{ input.intermediate_lots?.lot_code }}<br />
+                            <strong
+                              >{{ input.quantity | number: '1.0-3' }}
+                              {{ input.intermediate_lots?.units_of_measure?.code }}</strong
+                            >
+                            @if (input.variance_quantity !== null) {
+                              <span class="text-slate-400">
+                                · variance {{ input.variance_quantity | number: '1.0-3' }}</span
+                              >
+                            }
+                          </p>
+                        }
+                        @for (input of record.transformation_source_lot_inputs; track $index) {
+                          <p class="rounded-lg bg-slate-900 p-3">
+                            {{ input.source_lots?.lot_type }} · {{ input.source_lots?.lot_code
+                            }}<br />
+                            <strong
+                              >{{ input.quantity | number: '1.0-3' }}
+                              {{ input.units_of_measure?.code }}</strong
+                            >
+                          </p>
+                        }
+                        @for (input of record.transformation_inventory_inputs; track $index) {
+                          <p class="rounded-lg bg-slate-900 p-3">
+                            {{ input.inventory_lots?.inventory_items?.name }} ·
+                            {{ input.inventory_lots?.lot_code }}<br />
+                            <strong
+                              >{{ input.quantity | number: '1.0-3' }}
+                              {{ input.units_of_measure?.code }}</strong
+                            >
+                            @if (input.variance_quantity !== null) {
+                              <span class="text-slate-400">
+                                · variance {{ input.variance_quantity | number: '1.0-3' }}</span
+                              >
+                            }
+                          </p>
+                        }
+                      </div>
+                    </div>
+                    <div>
+                      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Generated outputs
+                      </h3>
+                      <div class="mt-2 space-y-2 text-sm">
+                        @for (output of record.transformation_outputs; track $index) {
+                          <p class="rounded-lg border border-emerald-950 bg-emerald-950/30 p-3">
+                            {{ output.products?.name }} · {{ output.intermediate_lots?.lot_code
+                            }}<br />
+                            <strong class="text-emerald-300"
+                              >{{ output.quantity | number: '1.0-3' }}
+                              {{ output.units_of_measure?.code }}</strong
+                            >
+                            <span class="text-slate-400"> · {{ output.output_label }}</span>
+                          </p>
+                        }
+                      </div>
+                    </div>
+                    <div>
+                      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Process controls
+                      </h3>
+                      <div class="mt-2 space-y-2 text-sm">
+                        @for (control of record.transformation_process_controls; track $index) {
+                          <p
+                            class="flex items-center justify-between gap-3 rounded-lg bg-slate-900 p-3"
+                          >
+                            <span>{{ control.control_label }}</span>
+                            <strong
+                              [class.text-red-300]="control.in_spec === false"
+                              [class.text-emerald-300]="control.in_spec === true"
+                            >
+                              {{ control.numeric_value ?? control.text_value }}
+                              {{ control.uom_label }}
+                            </strong>
+                          </p>
+                        } @empty {
+                          <p
+                            class="rounded-lg border border-dashed border-slate-700 p-3 text-slate-500"
+                          >
+                            No controls recorded.
+                          </p>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  @if (record.notes) {
+                    <p class="mt-4 border-t border-slate-800 pt-4 text-sm text-slate-400">
+                      {{ record.notes }}
+                    </p>
+                  }
+                </div>
+              }
+            </article>
+          } @empty {
+            <div class="rounded-2xl border border-dashed border-slate-700 px-5 py-12 text-center">
+              <p class="font-bold">No product transformations recorded yet.</p>
+              <p class="mt-1 text-sm text-slate-400">
+                Your first completed process stage will appear here.
+              </p>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  </div>
+</main>

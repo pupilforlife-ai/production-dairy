@@ -1,10 +1,9 @@
-<div class="flex min-h-screen items-center justify-center bg-slate-900">
-  <div class="text-center p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
-    <h1 class="text-4xl font-black text-emerald-400 mb-2 tracking-tight">
-      🥛 Production Dairy
-    </h1>
-    <p class="text-slate-400 font-medium">
-      Tailwind and Vercel pipeline connected successfully!
-    </p>
+@if (betaMode) {
+  <div
+    class="pointer-events-none fixed right-3 top-3 z-[70] rounded-md border border-amber-300/40 bg-amber-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-900 shadow-sm"
+    aria-label="Restricted beta version"
+  >
+    Restricted beta
   </div>
-</div>
+}
+<router-outlet />

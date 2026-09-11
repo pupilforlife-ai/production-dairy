@@ -1,6 +1,38 @@
-# ProductionDairy
+# Vejoy Production Management System
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.4.
+Internal responsive factory application for tracing production from raw-material receipt through finished-stock handover. Distribution after handover remains outside this application.
+
+## Architecture baseline
+
+- Angular 22 standalone application
+- TypeScript 6
+- Tailwind CSS 4
+- Supabase Auth and PostgreSQL through `@supabase/supabase-js`
+- Vitest through Angular's unit-test builder
+- npm 10
+
+The Phase 1 architecture is a modular monolith. Keep business rules in domain services and database migrations rather than UI components. Do not replace the existing Angular scaffold without an approved architectural decision.
+
+## Project structure
+
+```text
+src/app/                 Angular application
+src/app/services/        Shared infrastructure services
+src/environment.ts       Browser-safe Supabase configuration
+supabase/migrations/     Versioned database migrations (when initialized)
+docs/                    Project and development conventions
+```
+
+Only a Supabase publishable/anonymous key may be used by the browser. Never place a service-role key or another secret in `src/environment.ts`.
+
+## Quality commands
+
+```bash
+npm run typecheck
+npm run format:check
+npm run test:ci
+npm run build
+```
 
 ## Development server
 
@@ -44,15 +76,7 @@ To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use th
 ng test
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+No end-to-end framework or Supabase migration workspace has been configured yet. Both should be introduced with the feature that first requires them, rather than implied by the baseline.
 
 ## Additional Resources
 

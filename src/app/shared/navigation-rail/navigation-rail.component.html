@@ -1,0 +1,293 @@
+<aside
+  class="group fixed inset-y-0 left-0 z-50 w-16 overflow-hidden border-r border-slate-800 bg-slate-900/98 shadow-2xl transition-[width] duration-200 ease-out hover:w-64 focus-within:w-64"
+  aria-label="Factory navigation"
+>
+  <a
+    class="flex h-20 min-w-64 items-center gap-3 border-b border-slate-800 px-3"
+    [routerLink]="homeLink"
+    aria-label="Factory workspace"
+  >
+    <span
+      class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-lg font-black text-slate-950"
+      >V</span
+    >
+    <span
+      class="whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+    >
+      <span class="block text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">Vejoy</span>
+      <span class="block font-bold text-slate-100">Factory workspace</span>
+      @if (betaMode) {
+        <span class="block text-[10px] font-black uppercase tracking-[0.18em] text-amber-300"
+          >Restricted beta</span
+        >
+      }
+    </span>
+  </a>
+
+  <nav class="min-w-64 space-y-1 p-2" aria-label="Production management">
+    @if (auth.hasRole('owner')) {
+      <a
+        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+        routerLink="/master-data"
+        routerLinkActive="bg-emerald-950 text-emerald-300"
+        aria-label="Master data"
+      >
+        <svg
+          class="size-8 shrink-0 p-1"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <ellipse cx="12" cy="5" rx="8" ry="3"></ellipse>
+          <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path>
+          <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path>
+        </svg>
+        <span
+          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >Master data</span
+        >
+      </a>
+
+      <a
+        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+        routerLink="/recipes"
+        routerLinkActive="bg-emerald-950 text-emerald-300"
+        aria-label="Manage recipes"
+      >
+        <svg
+          class="size-8 shrink-0 p-1"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="M9 5h6"></path>
+          <path d="M9 3h6a2 2 0 0 1 2 2v1h2v15H5V6h2V5a2 2 0 0 1 2-2Z"></path>
+          <path d="m8 12 1.5 1.5L12 11"></path>
+          <path d="M14 13h3M8 17h9"></path>
+        </svg>
+        <span
+          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >Manage recipes</span
+        >
+      </a>
+    }
+
+    @if (!betaMode || auth.hasRole('owner')) {
+      <a
+        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+        routerLink="/receiving"
+        routerLinkActive="bg-emerald-950 text-emerald-300"
+        aria-label="Milk receiving"
+      >
+        <svg
+          class="size-8 shrink-0 p-1"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="M12 2S5.5 9.2 5.5 14.5a6.5 6.5 0 0 0 13 0C18.5 9.2 12 2 12 2Z"></path>
+          <path d="M9 16.5c.7 1 1.7 1.5 3 1.5"></path>
+        </svg>
+        <span
+          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >Milk receiving</span
+        >
+      </a>
+    }
+
+    <a
+      class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+      routerLink="/production-board"
+      routerLinkActive="bg-emerald-950 text-emerald-300"
+      aria-label="Production board"
+    >
+      <svg
+        class="size-8 shrink-0 p-1"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        aria-hidden="true"
+      >
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+      </svg>
+      <span
+        class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        >Production board</span
+      >
+    </a>
+
+    @if (!betaMode) {
+      <a
+        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+        routerLink="/intermediate-stock"
+        routerLinkActive="bg-emerald-950 text-emerald-300"
+        aria-label="Intermediate stock"
+      >
+        <svg
+          class="size-8 shrink-0 p-1"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"></path>
+          <path d="m4 12 8 4.5 8-4.5"></path>
+          <path d="m4 16.5 8 4.5 8-4.5"></path>
+        </svg>
+        <span
+          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >Intermediate stock</span
+        >
+      </a>
+
+      <a
+        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+        routerLink="/packing"
+        routerLinkActive="bg-emerald-950 text-emerald-300"
+        aria-label="Packing"
+      >
+        <svg
+          class="size-8 shrink-0 p-1"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"></path>
+          <path d="m4 7.5 8 4.5 8-4.5M12 12v9"></path>
+          <path d="m8 5.25 8 4.5"></path>
+        </svg>
+        <span
+          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >Packing</span
+        >
+      </a>
+
+      <a
+        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+        routerLink="/packing-verification"
+        routerLinkActive="bg-emerald-950 text-emerald-300"
+        aria-label="Packing verification"
+      >
+        <svg
+          class="size-8 shrink-0 p-1"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="M9 3h6a2 2 0 0 1 2 2v1h2v15H5V6h2V5a2 2 0 0 1 2-2Z"></path>
+          <path d="m8 13 2.5 2.5L16 10"></path>
+        </svg>
+        <span
+          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >Packing verification</span
+        >
+      </a>
+
+      <a
+        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+        routerLink="/inventory"
+        routerLinkActive="bg-emerald-950 text-emerald-300"
+        aria-label="Inventory"
+      >
+        <svg
+          class="size-8 shrink-0 p-1"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="M4 4h16v5H4zM4 9v11h16V9"></path>
+          <path d="M9 13h6M7 4V2M17 4V2"></path>
+        </svg>
+        <span
+          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >Inventory</span
+        >
+      </a>
+      <a
+        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+        routerLink="/transformations"
+        routerLinkActive="bg-emerald-950 text-emerald-300"
+        aria-label="Product transformations"
+      >
+        <svg
+          class="size-8 shrink-0 p-1"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="M5 4h6v6H5zM13 14h6v6h-6z"></path>
+          <path d="M11 7h3a3 3 0 0 1 3 3v4M13 17h-3a3 3 0 0 1-3-3v-4"></path>
+          <path d="m15 12 2 2 2-2M9 12l-2-2-2 2"></path>
+        </svg>
+        <span
+          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >Transformations</span
+        >
+      </a>
+    }
+
+    @if (auth.hasRole('owner')) {
+      <a
+        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+        routerLink="/users"
+        routerLinkActive="bg-emerald-950 text-emerald-300"
+        aria-label="Users"
+      >
+        <svg
+          class="size-8 shrink-0 p-1"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M19 8v6M16 11h6"></path>
+        </svg>
+        <span
+          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >Users</span
+        >
+      </a>
+    }
+  </nav>
+
+  <div
+    class="absolute bottom-4 left-0 flex min-w-64 items-center gap-3 px-4 text-xs text-slate-500"
+  >
+    <svg
+      class="size-6 shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      aria-hidden="true"
+    >
+      <path d="M4 6h16M4 12h16M4 18h16"></path>
+    </svg>
+    <span
+      class="whitespace-nowrap opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+      >Hover to expand navigation</span
+    >
+  </div>
+</aside>

@@ -16,6 +16,13 @@ export interface UserDraft {
   status: ApprovalStatus;
 }
 
+export type OwnerUserAction = 'reset_password' | 'delete_user';
+
+export interface OwnerUserActionResult {
+  ok: boolean;
+  message?: string;
+}
+
 export const USER_ROLES: Array<{ value: AppRole; label: string }> = [
   { value: 'owner', label: 'Owner' },
   { value: 'admin', label: 'Admin' },
@@ -36,4 +43,11 @@ export function countUsersByStatus(users: ManagedUser[]): Record<ApprovalStatus,
     }),
     { pending: 0, approved: 0, disapproved: 0 },
   );
+}
+
+export function validatePasswordReset(password: string, confirmation: string): string | null {
+  if (password.length < 8) return 'The new password must contain at least 8 characters.';
+  if (password.length > 72) return 'The new password cannot exceed 72 characters.';
+  if (password !== confirmation) return 'The password confirmation does not match.';
+  return null;
 }

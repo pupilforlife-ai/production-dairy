@@ -104,7 +104,7 @@
         <div class="mt-4 space-y-3">
           @for (user of filteredUsers(); track user.id) {
             <article
-              class="grid gap-4 rounded-2xl border bg-slate-900 p-5 lg:grid-cols-[1.6fr_0.8fr_0.8fr_auto] lg:items-end"
+              class="grid gap-4 rounded-2xl border bg-slate-900 p-5 lg:grid-cols-[1.6fr_0.8fr_0.8fr_auto_auto] lg:items-end"
               [class.border-amber-800]="user.approval_status === 'pending'"
               [class.border-slate-800]="user.approval_status !== 'pending'"
             >
@@ -179,6 +179,112 @@
               >
                 {{ savingUserId() === user.id ? 'Saving…' : 'Save' }}
               </button>
+
+              <div class="flex gap-2 lg:justify-end">
+                <button
+                  class="rounded-lg border border-sky-700 px-3 py-2 text-sm font-bold text-sky-300 hover:bg-sky-950 disabled:opacity-40"
+                  type="button"
+                  [disabled]="actionUserId() !== null"
+                  (click)="openPasswordReset(user)"
+                >
+                  Reset password
+                </button>
+                <button
+                  class="rounded-lg border border-red-800 px-3 py-2 text-sm font-bold text-red-300 hover:bg-red-950 disabled:opacity-40"
+                  type="button"
+                  [disabled]="isCurrentUser(user) || actionUserId() !== null"
+                  [title]="isCurrentUser(user) ? 'You cannot delete your own account' : ''"
+                  (click)="confirmDelete(user)"
+                >
+                  Delete
+                </button>
+              </div>
+
+              @if (passwordUserId() === user.id) {
+                <div
+                  class="grid gap-3 border-t border-slate-800 pt-4 lg:col-span-5 lg:grid-cols-[1fr_1fr_auto] lg:items-end"
+                >
+                  <label>
+                    <span
+                      class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500"
+                      >New password</span
+                    >
+                    <input
+                      #newPasswordInput
+                      class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      type="password"
+                      autocomplete="new-password"
+                      minlength="8"
+                      maxlength="72"
+                      [value]="newPassword()"
+                      (input)="newPassword.set(newPasswordInput.value)"
+                    />
+                  </label>
+                  <label>
+                    <span
+                      class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500"
+                      >Confirm password</span
+                    >
+                    <input
+                      #confirmPasswordInput
+                      class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      type="password"
+                      autocomplete="new-password"
+                      minlength="8"
+                      maxlength="72"
+                      [value]="passwordConfirmation()"
+                      (input)="passwordConfirmation.set(confirmPasswordInput.value)"
+                    />
+                  </label>
+                  <div class="flex gap-2">
+                    <button
+                      class="rounded-lg bg-sky-500 px-4 py-2 font-bold text-slate-950 hover:bg-sky-400 disabled:opacity-40"
+                      type="button"
+                      [disabled]="actionUserId() !== null"
+                      (click)="resetPassword(user)"
+                    >
+                      {{ actionUserId() === user.id ? 'Changing…' : 'Change password' }}
+                    </button>
+                    <button
+                      class="rounded-lg border border-slate-700 px-4 py-2 font-bold text-slate-300"
+                      type="button"
+                      [disabled]="actionUserId() !== null"
+                      (click)="cancelOwnerAction()"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              }
+
+              @if (deleteUserId() === user.id) {
+                <div
+                  class="flex flex-wrap items-center justify-between gap-3 border-t border-red-950 pt-4 lg:col-span-5"
+                >
+                  <p class="max-w-3xl text-sm text-red-200">
+                    Permanently delete <strong>{{ user.display_name || user.email }}</strong
+                    >? This is only allowed when the account has no factory or audit history.
+                  </p>
+                  <div class="flex gap-2">
+                    <button
+                      class="rounded-lg bg-red-600 px-4 py-2 font-bold text-white hover:bg-red-500 disabled:opacity-40"
+                      type="button"
+                      [disabled]="actionUserId() !== null"
+                      (click)="deleteUser(user)"
+                    >
+                      {{ actionUserId() === user.id ? 'Deleting…' : 'Delete permanently' }}
+                    </button>
+                    <button
+                      class="rounded-lg border border-slate-700 px-4 py-2 font-bold text-slate-300"
+                      type="button"
+                      [disabled]="actionUserId() !== null"
+                      (click)="cancelOwnerAction()"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              }
             </article>
           } @empty {
             <div class="rounded-2xl border border-dashed border-slate-700 px-5 py-12 text-center">

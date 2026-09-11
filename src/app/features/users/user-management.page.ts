@@ -8,6 +8,7 @@ import {
   USER_ROLES,
   USER_STATUSES,
   countUsersByStatus,
+  validatePasswordReset,
   type ManagedUser,
   type UserDraft,
 } from './user-management.models';
@@ -30,6 +31,11 @@ export class UserManagementPage implements OnInit {
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
   readonly statusFilter = signal<ApprovalStatus | 'all'>('all');
+  readonly passwordUserId = signal<string | null>(null);
+  readonly deleteUserId = signal<string | null>(null);
+  readonly newPassword = signal('');
+  readonly passwordConfirmation = signal('');
+  readonly actionUserId = signal<string | null>(null);
 
   readonly counts = computed(() => countUsersByStatus(this.users()));
   readonly filteredUsers = computed(() =>
@@ -89,11 +95,83 @@ export class UserManagementPage implements OnInit {
     }
   }
 
+  openPasswordReset(user: ManagedUser): void {
+    this.deleteUserId.set(null);
+    this.passwordUserId.set(user.id);
+    this.newPassword.set('');
+    this.passwordConfirmation.set('');
+    this.clearMessages();
+  }
+
+  confirmDelete(user: ManagedUser): void {
+    if (this.isCurrentUser(user)) return;
+    this.passwordUserId.set(null);
+    this.deleteUserId.set(user.id);
+    this.clearPasswords();
+    this.clearMessages();
+  }
+
+  cancelOwnerAction(): void {
+    this.passwordUserId.set(null);
+    this.deleteUserId.set(null);
+    this.clearPasswords();
+  }
+
+  async resetPassword(user: ManagedUser): Promise<void> {
+    if (this.actionUserId()) return;
+    const validationError = validatePasswordReset(this.newPassword(), this.passwordConfirmation());
+    if (validationError) {
+      this.errorMessage.set(validationError);
+      return;
+    }
+
+    this.actionUserId.set(user.id);
+    this.clearMessages();
+    try {
+      await this.userManagement.resetPassword(user.id, this.newPassword());
+      this.successMessage.set(`Password changed for ${user.display_name || user.email}.`);
+      this.passwordUserId.set(null);
+      this.clearPasswords();
+    } catch (error) {
+      this.errorMessage.set(
+        error instanceof Error ? error.message : 'Unable to change the user password.',
+      );
+    } finally {
+      this.actionUserId.set(null);
+    }
+  }
+
+  async deleteUser(user: ManagedUser): Promise<void> {
+    if (this.isCurrentUser(user) || this.actionUserId()) return;
+    this.actionUserId.set(user.id);
+    this.clearMessages();
+    try {
+      await this.userManagement.deleteUser(user.id);
+      this.successMessage.set(`${user.display_name || user.email} was permanently deleted.`);
+      this.deleteUserId.set(null);
+      await this.load(false);
+    } catch (error) {
+      this.errorMessage.set(error instanceof Error ? error.message : 'Unable to delete the user.');
+    } finally {
+      this.actionUserId.set(null);
+    }
+  }
+
   private updateDraft(user: ManagedUser, change: Partial<UserDraft>): void {
     this.drafts.update((drafts) => ({
       ...drafts,
       [user.id]: { ...this.draftFor(user), ...change },
     }));
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+  }
+
+  private clearPasswords(): void {
+    this.newPassword.set('');
+    this.passwordConfirmation.set('');
+  }
+
+  private clearMessages(): void {
     this.errorMessage.set(null);
     this.successMessage.set(null);
   }

@@ -114,7 +114,6 @@ export interface LooseStockPool {
   possible_cases: number;
   remainder_loose_packets: number;
   oldest_retained_at: string;
-  pool_key: string | null;
 }
 
 export interface LooseStockConsolidationHistory {

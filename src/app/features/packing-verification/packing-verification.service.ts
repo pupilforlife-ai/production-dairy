@@ -36,7 +36,7 @@ export class PackingVerificationService {
         this.supabase
           .from('loose_stock_consolidation_pools')
           .select(
-            'sku_id, sku_code, sku_description, packets_per_case, available_loose_packets, possible_cases, remainder_loose_packets, oldest_retained_at, pool_key',
+            'sku_id, sku_code, sku_description, packets_per_case, available_loose_packets, possible_cases, remainder_loose_packets, oldest_retained_at',
           )
           .order('sku_code'),
         this.supabase

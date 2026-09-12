@@ -174,52 +174,55 @@
           >Packing</span
         >
       </a>
+    }
 
-      <a
-        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
-        routerLink="/packing-verification"
-        routerLinkActive="bg-emerald-950 text-emerald-300"
-        aria-label="Packing verification"
+    <a
+      class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+      routerLink="/packing-verification"
+      routerLinkActive="bg-emerald-950 text-emerald-300"
+      aria-label="Physical stock verification"
+    >
+      <svg
+        class="size-8 shrink-0 p-1"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        aria-hidden="true"
       >
-        <svg
-          class="size-8 shrink-0 p-1"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
-        >
-          <path d="M9 3h6a2 2 0 0 1 2 2v1h2v15H5V6h2V5a2 2 0 0 1 2-2Z"></path>
-          <path d="m8 13 2.5 2.5L16 10"></path>
-        </svg>
-        <span
-          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
-          >Packing verification</span
-        >
-      </a>
+        <path d="M9 3h6a2 2 0 0 1 2 2v1h2v15H5V6h2V5a2 2 0 0 1 2-2Z"></path>
+        <path d="m8 13 2.5 2.5L16 10"></path>
+      </svg>
+      <span
+        class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        >Physical stock</span
+      >
+    </a>
 
-      <a
-        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
-        routerLink="/inventory"
-        routerLinkActive="bg-emerald-950 text-emerald-300"
-        aria-label="Inventory"
+    <a
+      class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+      routerLink="/inventory"
+      routerLinkActive="bg-emerald-950 text-emerald-300"
+      aria-label="Inventory"
+    >
+      <svg
+        class="size-8 shrink-0 p-1"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        aria-hidden="true"
       >
-        <svg
-          class="size-8 shrink-0 p-1"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
-        >
-          <path d="M4 4h16v5H4zM4 9v11h16V9"></path>
-          <path d="M9 13h6M7 4V2M17 4V2"></path>
-        </svg>
-        <span
-          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
-          >Inventory</span
-        >
-      </a>
+        <path d="M4 4h16v5H4zM4 9v11h16V9"></path>
+        <path d="M9 13h6M7 4V2M17 4V2"></path>
+      </svg>
+      <span
+        class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        >Inventory</span
+      >
+    </a>
+
+    @if (!betaMode) {
       <a
         class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
         routerLink="/transformations"

@@ -54,7 +54,7 @@ export const routes: Routes = [
   },
   {
     path: 'packing-verification',
-    canActivate: [authGuard, fullReleaseGuard],
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/packing-verification/packing-verification.page').then(
         (page) => page.PackingVerificationPage,
@@ -62,7 +62,7 @@ export const routes: Routes = [
   },
   {
     path: 'inventory',
-    canActivate: [authGuard, fullReleaseGuard],
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/inventory/inventory.page').then((page) => page.InventoryPage),
   },

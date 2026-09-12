@@ -293,7 +293,7 @@ export class PackingVerificationPage implements OnInit {
   }
 
   poolKey(pool: LooseStockPool): string {
-    return pool.pool_key ?? `${pool.sku_id}:${pool.packets_per_case ?? 'unconfigured'}`;
+    return `${pool.sku_id}:${pool.packets_per_case ?? 'unconfigured'}`;
   }
 
   private updateRow(key: string, changes: Partial<SkuPackingVerificationRow>): void {

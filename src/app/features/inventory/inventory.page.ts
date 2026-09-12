@@ -39,6 +39,7 @@ export class InventoryPage implements OnInit {
   readonly activeAction = signal<InventoryAction>(null);
   readonly consumptionReferenceType = signal<ConsumptionReferenceType>('none');
   readonly selectedBalanceKey = signal<string | null>(null);
+  readonly inlineMoveKey = signal<string | null>(null);
   readonly itemTypeFilter = signal('');
   readonly locationFilter = signal('');
   readonly loading = signal(true);
@@ -148,6 +149,7 @@ export class InventoryPage implements OnInit {
 
   toggleAction(action: Exclude<InventoryAction, null>): void {
     this.activeAction.set(this.activeAction() === action ? null : action);
+    this.inlineMoveKey.set(null);
     this.errorMessage.set(null);
     this.successMessage.set(null);
   }
@@ -160,6 +162,26 @@ export class InventoryPage implements OnInit {
   selectConsumeBalance(key: string): void {
     const balance = this.findBalance(key);
     if (balance) this.consumeForm.controls.quantity.setValue(Number(balance.current_quantity));
+  }
+
+  startMove(balance: InventoryBalance): void {
+    const key = balanceKey(balance);
+    this.selectedBalanceKey.set(key);
+    this.inlineMoveKey.set(this.inlineMoveKey() === key ? null : key);
+    this.activeAction.set(null);
+    this.transferForm.reset({
+      balanceKey: key,
+      quantity: Number(balance.current_quantity),
+      destinationLocationId: this.defaultMoveDestination(balance),
+      occurredAt: this.localDateTime(),
+      notes: '',
+    });
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+  }
+
+  cancelMove(): void {
+    this.inlineMoveKey.set(null);
   }
 
   selectBalanceForHistory(balance: InventoryBalance): void {
@@ -267,6 +289,7 @@ export class InventoryPage implements OnInit {
       });
       this.successMessage.set('Inventory transfer recorded.');
       this.activeAction.set(null);
+      this.inlineMoveKey.set(null);
       await this.load(false);
     });
   }
@@ -365,6 +388,18 @@ export class InventoryPage implements OnInit {
 
   private locationId(code: string): string {
     return this.locations().find((location) => location.code === code)?.id || '';
+  }
+
+  private defaultMoveDestination(balance: InventoryBalance): string {
+    return (
+      this.locations().find(
+        (location) =>
+          location.id !== balance.storage_location_id &&
+          location.code === 'INTERMEDIATE_INGREDIENT',
+      )?.id ??
+      this.locations().find((location) => location.id !== balance.storage_location_id)?.id ??
+      ''
+    );
   }
 
   private async runSave(operation: () => Promise<void>): Promise<void> {

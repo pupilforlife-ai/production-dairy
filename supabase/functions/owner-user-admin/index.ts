@@ -59,7 +59,7 @@ Deno.serve(async (request) => {
   const callerId = authData.user.id;
   const { data: callerProfile, error: callerError } = await userClient
     .from('profiles')
-    .select('role, active, approval_status')
+    .select('id, display_name, role, active, approval_status')
     .eq('id', callerId)
     .single();
   const callerRole = callerProfile?.role;
@@ -87,12 +87,16 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'A valid user is required.' }, 400);
   }
 
-  const { data: targetProfile, error: targetError } = await admin
-    .from('profiles')
-    .select('id, display_name, role, approval_status')
-    .eq('id', body.userId)
-    .single();
-  if (targetError || !targetProfile) return jsonResponse({ error: 'User account not found.' }, 404);
+  let targetProfile = callerProfile;
+  if (body.userId !== callerId) {
+    const { data, error } = await admin
+      .from('profiles')
+      .select('id, display_name, role, approval_status')
+      .eq('id', body.userId)
+      .single();
+    if (error || !data) return jsonResponse({ error: 'User account not found.' }, 404);
+    targetProfile = data;
+  }
 
   if (body.action === 'reset_password') {
     if (callerRole !== 'owner' && targetProfile.role !== 'factory_worker') {

@@ -32,6 +32,11 @@ export class UserManagementService {
   }
 
   private async runOwnerAction(body: Record<string, string>): Promise<void> {
+    const { data: sessionData, error: sessionError } = await this.supabase.auth.refreshSession();
+    if (sessionError || !sessionData.session) {
+      throw new Error('Your session has expired. Please sign in again, then retry the password change.');
+    }
+
     const { data, error } = await this.supabase.functions.invoke<OwnerUserActionResult>(
       'owner-user-admin',
       { body },

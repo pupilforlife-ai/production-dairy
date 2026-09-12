@@ -1,6 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { NavigationRailComponent } from '../../shared/navigation-rail/navigation-rail.component';
 import { productionStatusLabel } from '../production-board/production-board.models';
@@ -18,10 +17,8 @@ import { DashboardService } from './dashboard.service';
   templateUrl: './dashboard.page.html',
 })
 export class DashboardPage implements OnInit {
-  private readonly router = inject(Router);
   private readonly dashboard = inject(DashboardService);
   readonly auth = inject(AuthService);
-  readonly signingOut = signal(false);
   readonly loading = signal(true);
   readonly showMilkDetails = signal(false);
   readonly milkLot = signal<DashboardMilkLot | null>(null);
@@ -49,13 +46,4 @@ export class DashboardPage implements OnInit {
     }
   }
 
-  async signOut(): Promise<void> {
-    this.signingOut.set(true);
-    try {
-      await this.auth.signOut();
-      await this.router.navigate(['/login']);
-    } finally {
-      this.signingOut.set(false);
-    }
-  }
 }

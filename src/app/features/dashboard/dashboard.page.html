@@ -6,7 +6,7 @@
         <p class="text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">Vejoy</p>
         <h1 class="text-xl font-bold">Production Management</h1>
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-4 pr-32">
         <div class="hidden text-right sm:block">
           <p class="text-sm font-semibold">
             {{ auth.profile()?.display_name || auth.user()?.email }}
@@ -15,14 +15,6 @@
             {{ auth.profile()?.role?.replace('_', ' ') }}
           </p>
         </div>
-        <button
-          class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800 disabled:opacity-50"
-          type="button"
-          [disabled]="signingOut()"
-          (click)="signOut()"
-        >
-          Sign out
-        </button>
       </div>
     </div>
   </header>

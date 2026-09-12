@@ -38,9 +38,13 @@ export class UserManagementPage implements OnInit {
   readonly newPassword = signal('');
   readonly passwordConfirmation = signal('');
   readonly actionUserId = signal<string | null>(null);
+  readonly selectedWorkerId = signal('');
 
   readonly counts = computed(() => countUsersByStatus(this.users()));
   readonly canManageUsers = computed(() => this.auth.hasActualRole('owner'));
+  readonly selectedWorker = computed(
+    () => this.workers().find((worker) => worker.id === this.selectedWorkerId()) ?? null,
+  );
   readonly filteredUsers = computed(() =>
     this.users().filter(
       (user) => this.statusFilter() === 'all' || user.approval_status === this.statusFilter(),
@@ -207,6 +211,8 @@ export class UserManagementPage implements OnInit {
   }
 
   selectWorker(value: string): void {
+    this.selectedWorkerId.set(value);
+    this.clearPasswords();
     if (!value) {
       this.auth.stopImpersonation();
       this.successMessage.set('Returned to your actual role.');
@@ -220,6 +226,31 @@ export class UserManagementPage implements OnInit {
     this.errorMessage.set(null);
   }
 
+  async resetSelectedWorkerPassword(): Promise<void> {
+    const worker = this.selectedWorker();
+    if (!worker || !this.auth.hasActualRole('owner', 'admin') || this.actionUserId()) return;
+
+    const validationError = validatePasswordReset(this.newPassword(), this.passwordConfirmation());
+    if (validationError) {
+      this.errorMessage.set(validationError);
+      return;
+    }
+
+    this.actionUserId.set(worker.id);
+    this.clearMessages();
+    try {
+      await this.userManagement.resetPassword(worker.id, this.newPassword());
+      this.successMessage.set(`Password changed for ${worker.display_name || worker.email}.`);
+      this.clearPasswords();
+    } catch (error) {
+      this.errorMessage.set(
+        error instanceof Error ? error.message : 'Unable to change the worker password.',
+      );
+    } finally {
+      this.actionUserId.set(null);
+    }
+  }
+
   async refreshWorkers(): Promise<void> {
     await this.loadWorkers();
   }
@@ -230,8 +261,13 @@ export class UserManagementPage implements OnInit {
       const workers = await this.auth.listImpersonatableWorkers();
       this.workers.set(workers);
       const activeWorkerId = this.auth.impersonatedProfile()?.id;
-      if (activeWorkerId && !workers.some((worker) => worker.id === activeWorkerId)) {
+      if (activeWorkerId && workers.some((worker) => worker.id === activeWorkerId)) {
+        this.selectedWorkerId.set(activeWorkerId);
+      } else if (activeWorkerId) {
         this.auth.stopImpersonation();
+        this.selectedWorkerId.set('');
+      } else if (!workers.some((worker) => worker.id === this.selectedWorkerId())) {
+        this.selectedWorkerId.set('');
       }
     } catch (error) {
       this.errorMessage.set(

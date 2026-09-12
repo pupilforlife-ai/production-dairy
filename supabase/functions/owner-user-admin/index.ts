@@ -54,13 +54,15 @@ Deno.serve(async (request) => {
     .select('role, active, approval_status')
     .eq('id', callerId)
     .single();
+  const callerRole = callerProfile?.role;
+  const callerCanAdministerWorkers = callerRole === 'owner' || callerRole === 'admin';
   if (
     callerError ||
-    callerProfile?.role !== 'owner' ||
-    callerProfile.active !== true ||
-    callerProfile.approval_status !== 'approved'
+    !callerCanAdministerWorkers ||
+    callerProfile?.active !== true ||
+    callerProfile?.approval_status !== 'approved'
   ) {
-    return jsonResponse({ error: 'Owner access required.' }, 403);
+    return jsonResponse({ error: 'Owner or admin access required.' }, 403);
   }
 
   let body: OwnerActionRequest;
@@ -85,6 +87,10 @@ Deno.serve(async (request) => {
   if (targetError || !targetProfile) return jsonResponse({ error: 'User account not found.' }, 404);
 
   if (body.action === 'reset_password') {
+    if (callerRole !== 'owner' && targetProfile.role !== 'factory_worker') {
+      return jsonResponse({ error: 'Admins can only reset factory worker passwords.' }, 403);
+    }
+
     if (
       typeof body.password !== 'string' ||
       body.password.length < 8 ||
@@ -101,7 +107,7 @@ Deno.serve(async (request) => {
     await admin.from('audit_events').insert({
       entity_type: 'user_account',
       entity_id: body.userId,
-      action: 'password_reset_by_owner',
+      action: callerRole === 'owner' ? 'password_reset_by_owner' : 'password_reset_by_admin',
       actor_user_id: callerId,
       new_data: { target_display_name: targetProfile.display_name },
     });
@@ -109,6 +115,10 @@ Deno.serve(async (request) => {
   }
 
   if (body.action === 'delete_user') {
+    if (callerRole !== 'owner') {
+      return jsonResponse({ error: 'Owner access required.' }, 403);
+    }
+
     if (body.userId === callerId) {
       return jsonResponse({ error: 'You cannot delete your own owner account.' }, 400);
     }

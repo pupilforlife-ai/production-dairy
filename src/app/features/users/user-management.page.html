@@ -72,7 +72,7 @@
           <select
             #workerSelect
             class="w-full rounded-lg border border-sky-800 bg-slate-950 px-3 py-2 text-slate-100 disabled:opacity-50"
-            [value]="auth.impersonatedProfile()?.id || ''"
+            [value]="selectedWorkerId()"
             [disabled]="loadingWorkers()"
             (change)="selectWorker(workerSelect.value)"
           >
@@ -95,6 +95,47 @@
         <p class="mt-3 text-sm text-sky-100">
           Active view: <strong>{{ worker.display_name || worker.email }}</strong>
         </p>
+      }
+      @if (selectedWorker(); as worker) {
+        <div class="mt-5 rounded-xl border border-sky-900 bg-slate-950/60 p-4">
+          <p class="text-sm font-bold text-sky-100">
+            Change password for {{ worker.display_name || worker.email }}
+          </p>
+          <div class="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <label>
+              <span class="mb-1 block text-xs font-bold uppercase tracking-wider text-sky-200"
+                >New password</span
+              >
+              <input
+                class="w-full rounded-lg border border-sky-800 bg-slate-950 px-3 py-2 text-slate-100"
+                type="password"
+                autocomplete="new-password"
+                [value]="newPassword()"
+                (input)="newPassword.set($any($event.target).value)"
+              />
+            </label>
+            <label>
+              <span class="mb-1 block text-xs font-bold uppercase tracking-wider text-sky-200"
+                >Confirm password</span
+              >
+              <input
+                class="w-full rounded-lg border border-sky-800 bg-slate-950 px-3 py-2 text-slate-100"
+                type="password"
+                autocomplete="new-password"
+                [value]="passwordConfirmation()"
+                (input)="passwordConfirmation.set($any($event.target).value)"
+              />
+            </label>
+            <button
+              class="rounded-lg bg-sky-300 px-4 py-2 text-sm font-black text-slate-950 hover:bg-sky-200 disabled:opacity-50"
+              type="button"
+              [disabled]="actionUserId() === worker.id"
+              (click)="resetSelectedWorkerPassword()"
+            >
+              {{ actionUserId() === worker.id ? 'Changing…' : 'Change worker password' }}
+            </button>
+          </div>
+        </div>
       }
     </section>
 

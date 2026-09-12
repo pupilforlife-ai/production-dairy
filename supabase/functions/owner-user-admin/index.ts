@@ -17,6 +17,9 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
 }
 
 function readDefaultSecret(): string | null {
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (serviceRoleKey) return serviceRoleKey;
+
   const secretMap = Deno.env.get('SUPABASE_SECRET_KEYS');
   if (secretMap) {
     try {
@@ -26,7 +29,7 @@ function readDefaultSecret(): string | null {
       // Fall back to the legacy runtime variable below.
     }
   }
-  return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  return null;
 }
 
 Deno.serve(async (request) => {
@@ -35,6 +38,7 @@ Deno.serve(async (request) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const secretKey = readDefaultSecret();
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? secretKey;
   if (!supabaseUrl || !secretKey)
     return jsonResponse({ error: 'Server configuration error.' }, 500);
 
@@ -45,11 +49,15 @@ Deno.serve(async (request) => {
   const admin = createClient(supabaseUrl, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+  const userClient = createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+  });
   const { data: authData, error: authError } = await admin.auth.getUser(accessToken);
   if (authError || !authData.user) return jsonResponse({ error: 'Your session is invalid.' }, 401);
 
   const callerId = authData.user.id;
-  const { data: callerProfile, error: callerError } = await admin
+  const { data: callerProfile, error: callerError } = await userClient
     .from('profiles')
     .select('role, active, approval_status')
     .eq('id', callerId)

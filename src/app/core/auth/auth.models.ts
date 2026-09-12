@@ -11,6 +11,10 @@ export interface Profile {
   approval_status: ApprovalStatus;
 }
 
+export interface ImpersonationProfile extends Profile {
+  email: string;
+}
+
 export interface AuthState {
   session: Session | null;
   user: User | null;

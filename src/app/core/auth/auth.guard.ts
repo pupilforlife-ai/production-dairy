@@ -30,6 +30,15 @@ export const roleGuard = (...roles: AppRole[]): CanActivateFn => {
   };
 };
 
+export const actualRoleGuard = (...roles: AppRole[]): CanActivateFn => {
+  return async () => {
+    const auth = inject(AuthService);
+    const router = inject(Router);
+    await auth.initialize();
+    return auth.hasActualRole(...roles) ? true : router.createUrlTree(['/']);
+  };
+};
+
 /**
  * Pages protected by this guard remain available during normal development,
  * but cannot be opened in the restricted beta release.

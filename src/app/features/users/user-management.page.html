@@ -8,18 +8,24 @@
     <header class="mt-5 flex flex-wrap items-end justify-between gap-4">
       <div>
         <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
-          Owner controls
+          User controls
         </p>
         <h1 class="mt-2 text-3xl font-bold">Users</h1>
         <p class="mt-2 max-w-2xl text-slate-400">
-          Review registered accounts, control access, and assign each approved user an operational
-          role.
+          View the app as a factory worker. Owners can also control access and assign operational
+          roles.
         </p>
       </div>
       <span
-        class="rounded-xl border border-amber-900 bg-amber-950/40 px-4 py-3 text-sm text-amber-200"
+        class="rounded-xl border px-4 py-3 text-sm"
+        [class.border-amber-900]="canManageUsers()"
+        [class.bg-amber-950]="canManageUsers()"
+        [class.text-amber-200]="canManageUsers()"
+        [class.border-sky-900]="!canManageUsers()"
+        [class.bg-sky-950]="!canManageUsers()"
+        [class.text-sky-200]="!canManageUsers()"
       >
-        Only Owners can make changes
+        {{ canManageUsers() ? 'Only Owners can make changes' : 'Admin impersonation access' }}
       </span>
     </header>
 
@@ -40,46 +46,101 @@
       </p>
     }
 
-    <section class="mt-7 grid gap-3 sm:grid-cols-3">
-      <button
-        class="rounded-2xl border p-4 text-left transition"
-        [class.border-amber-700]="statusFilter() === 'pending'"
-        [class.bg-amber-950]="statusFilter() === 'pending'"
-        [class.border-slate-800]="statusFilter() !== 'pending'"
-        [class.bg-slate-900]="statusFilter() !== 'pending'"
-        type="button"
-        (click)="setFilter(statusFilter() === 'pending' ? 'all' : 'pending')"
-      >
-        <p class="text-xs font-bold uppercase tracking-wider text-amber-400">Awaiting approval</p>
-        <p class="mt-2 text-3xl font-black">{{ counts().pending }}</p>
-      </button>
-      <button
-        class="rounded-2xl border p-4 text-left transition"
-        [class.border-emerald-700]="statusFilter() === 'approved'"
-        [class.bg-emerald-950]="statusFilter() === 'approved'"
-        [class.border-slate-800]="statusFilter() !== 'approved'"
-        [class.bg-slate-900]="statusFilter() !== 'approved'"
-        type="button"
-        (click)="setFilter(statusFilter() === 'approved' ? 'all' : 'approved')"
-      >
-        <p class="text-xs font-bold uppercase tracking-wider text-emerald-400">Approved</p>
-        <p class="mt-2 text-3xl font-black">{{ counts().approved }}</p>
-      </button>
-      <button
-        class="rounded-2xl border p-4 text-left transition"
-        [class.border-red-800]="statusFilter() === 'disapproved'"
-        [class.bg-red-950]="statusFilter() === 'disapproved'"
-        [class.border-slate-800]="statusFilter() !== 'disapproved'"
-        [class.bg-slate-900]="statusFilter() !== 'disapproved'"
-        type="button"
-        (click)="setFilter(statusFilter() === 'disapproved' ? 'all' : 'disapproved')"
-      >
-        <p class="text-xs font-bold uppercase tracking-wider text-red-400">Disapproved</p>
-        <p class="mt-2 text-3xl font-black">{{ counts().disapproved }}</p>
-      </button>
+    <section class="mt-7 rounded-2xl border border-sky-900 bg-sky-950/25 p-5">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold">View as factory worker</h2>
+          <p class="mt-1 max-w-2xl text-sm text-sky-100/80">
+            Choose an approved factory worker to see the app with their permissions.
+          </p>
+        </div>
+        @if (auth.impersonatedProfile()) {
+          <button
+            class="rounded-lg border border-sky-600 px-4 py-2 text-sm font-bold text-sky-100 hover:bg-sky-900"
+            type="button"
+            (click)="selectWorker('')"
+          >
+            Exit view
+          </button>
+        }
+      </div>
+      <div class="mt-4 grid gap-3 sm:grid-cols-[minmax(260px,420px)_auto] sm:items-end">
+        <label>
+          <span class="mb-1 block text-xs font-bold uppercase tracking-wider text-sky-200"
+            >Factory worker</span
+          >
+          <select
+            #workerSelect
+            class="w-full rounded-lg border border-sky-800 bg-slate-950 px-3 py-2 text-slate-100 disabled:opacity-50"
+            [value]="auth.impersonatedProfile()?.id || ''"
+            [disabled]="loadingWorkers()"
+            (change)="selectWorker(workerSelect.value)"
+          >
+            <option value="">{{ loadingWorkers() ? 'Loading workers…' : 'Use actual role' }}</option>
+            @for (worker of workers(); track worker.id) {
+              <option [value]="worker.id">{{ worker.display_name || worker.email }}</option>
+            }
+          </select>
+        </label>
+        <button
+          class="rounded-lg border border-sky-700 px-4 py-2 text-sm font-bold text-sky-200 hover:bg-sky-950 disabled:opacity-50"
+          type="button"
+          [disabled]="loadingWorkers()"
+          (click)="refreshWorkers()"
+        >
+          Refresh workers
+        </button>
+      </div>
+      @if (auth.impersonatedProfile(); as worker) {
+        <p class="mt-3 text-sm text-sky-100">
+          Active view: <strong>{{ worker.display_name || worker.email }}</strong>
+        </p>
+      }
     </section>
 
-    <section class="mt-6">
+    @if (canManageUsers()) {
+      <section class="mt-7 grid gap-3 sm:grid-cols-3">
+        <button
+          class="rounded-2xl border p-4 text-left transition"
+          [class.border-amber-700]="statusFilter() === 'pending'"
+          [class.bg-amber-950]="statusFilter() === 'pending'"
+          [class.border-slate-800]="statusFilter() !== 'pending'"
+          [class.bg-slate-900]="statusFilter() !== 'pending'"
+          type="button"
+          (click)="setFilter(statusFilter() === 'pending' ? 'all' : 'pending')"
+        >
+          <p class="text-xs font-bold uppercase tracking-wider text-amber-400">Awaiting approval</p>
+          <p class="mt-2 text-3xl font-black">{{ counts().pending }}</p>
+        </button>
+        <button
+          class="rounded-2xl border p-4 text-left transition"
+          [class.border-emerald-700]="statusFilter() === 'approved'"
+          [class.bg-emerald-950]="statusFilter() === 'approved'"
+          [class.border-slate-800]="statusFilter() !== 'approved'"
+          [class.bg-slate-900]="statusFilter() !== 'approved'"
+          type="button"
+          (click)="setFilter(statusFilter() === 'approved' ? 'all' : 'approved')"
+        >
+          <p class="text-xs font-bold uppercase tracking-wider text-emerald-400">Approved</p>
+          <p class="mt-2 text-3xl font-black">{{ counts().approved }}</p>
+        </button>
+        <button
+          class="rounded-2xl border p-4 text-left transition"
+          [class.border-red-800]="statusFilter() === 'disapproved'"
+          [class.bg-red-950]="statusFilter() === 'disapproved'"
+          [class.border-slate-800]="statusFilter() !== 'disapproved'"
+          [class.bg-slate-900]="statusFilter() !== 'disapproved'"
+          type="button"
+          (click)="setFilter(statusFilter() === 'disapproved' ? 'all' : 'disapproved')"
+        >
+          <p class="text-xs font-bold uppercase tracking-wider text-red-400">Disapproved</p>
+          <p class="mt-2 text-3xl font-black">{{ counts().disapproved }}</p>
+        </button>
+      </section>
+    }
+
+    @if (canManageUsers()) {
+      <section class="mt-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="text-xl font-bold">
           {{ statusFilter() === 'all' ? 'All registered users' : statusLabel(statusFilter()) }}
@@ -293,6 +354,7 @@
           }
         </div>
       }
-    </section>
+      </section>
+    }
   </div>
 </main>

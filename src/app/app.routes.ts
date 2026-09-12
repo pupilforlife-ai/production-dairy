@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import {
+  actualRoleGuard,
   authGuard,
   betaLandingGuard,
   fullReleaseGuard,
@@ -75,7 +76,7 @@ export const routes: Routes = [
   },
   {
     path: 'users',
-    canActivate: [authGuard, roleGuard('owner')],
+    canActivate: [authGuard, actualRoleGuard('owner', 'admin')],
     loadComponent: () =>
       import('./features/users/user-management.page').then((page) => page.UserManagementPage),
   },

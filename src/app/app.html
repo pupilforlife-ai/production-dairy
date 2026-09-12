@@ -6,4 +6,21 @@
     Restricted beta
   </div>
 }
+@if (auth.impersonatedProfile(); as worker) {
+  <div
+    class="fixed left-20 right-3 top-3 z-[80] flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-700 bg-sky-950 px-3 py-2 text-sm text-sky-100 shadow-2xl"
+    role="status"
+  >
+    <span>
+      Viewing as <strong>{{ worker.display_name || worker.email }}</strong>
+    </span>
+    <button
+      class="rounded-md border border-sky-500 px-3 py-1 text-xs font-bold text-sky-100 hover:bg-sky-900"
+      type="button"
+      (click)="auth.stopImpersonation()"
+    >
+      Exit
+    </button>
+  </div>
+}
 <router-outlet />

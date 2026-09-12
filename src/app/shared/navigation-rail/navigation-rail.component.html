@@ -246,7 +246,7 @@
       </a>
     }
 
-    @if (auth.hasRole('owner')) {
+    @if (auth.hasActualRole('owner', 'admin')) {
       <a
         class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
         routerLink="/users"

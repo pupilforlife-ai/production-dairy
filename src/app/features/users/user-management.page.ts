@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import type { AppRole, ApprovalStatus } from '../../core/auth/auth.models';
+import type { AppRole, ApprovalStatus, ImpersonationProfile } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { NavigationRailComponent } from '../../shared/navigation-rail/navigation-rail.component';
 import {
@@ -25,8 +25,10 @@ export class UserManagementPage implements OnInit {
   readonly roles = USER_ROLES;
   readonly statuses = USER_STATUSES;
   readonly users = signal<ManagedUser[]>([]);
+  readonly workers = signal<ImpersonationProfile[]>([]);
   readonly drafts = signal<Record<string, UserDraft>>({});
   readonly loading = signal(true);
+  readonly loadingWorkers = signal(true);
   readonly savingUserId = signal<string | null>(null);
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
@@ -38,6 +40,7 @@ export class UserManagementPage implements OnInit {
   readonly actionUserId = signal<string | null>(null);
 
   readonly counts = computed(() => countUsersByStatus(this.users()));
+  readonly canManageUsers = computed(() => this.auth.hasActualRole('owner'));
   readonly filteredUsers = computed(() =>
     this.users().filter(
       (user) => this.statusFilter() === 'all' || user.approval_status === this.statusFilter(),
@@ -45,7 +48,7 @@ export class UserManagementPage implements OnInit {
   );
 
   async ngOnInit(): Promise<void> {
-    await this.load();
+    await Promise.all([this.load(), this.loadWorkers()]);
   }
 
   setFilter(value: string): void {
@@ -79,7 +82,7 @@ export class UserManagementPage implements OnInit {
   }
 
   async save(user: ManagedUser): Promise<void> {
-    if (!this.hasChanges(user) || this.savingUserId()) return;
+    if (!this.canManageUsers() || !this.hasChanges(user) || this.savingUserId()) return;
     const draft = this.draftFor(user);
     this.savingUserId.set(user.id);
     this.errorMessage.set(null);
@@ -96,6 +99,7 @@ export class UserManagementPage implements OnInit {
   }
 
   openPasswordReset(user: ManagedUser): void {
+    if (!this.canManageUsers()) return;
     this.deleteUserId.set(null);
     this.passwordUserId.set(user.id);
     this.newPassword.set('');
@@ -104,6 +108,7 @@ export class UserManagementPage implements OnInit {
   }
 
   confirmDelete(user: ManagedUser): void {
+    if (!this.canManageUsers()) return;
     if (this.isCurrentUser(user)) return;
     this.passwordUserId.set(null);
     this.deleteUserId.set(user.id);
@@ -118,7 +123,7 @@ export class UserManagementPage implements OnInit {
   }
 
   async resetPassword(user: ManagedUser): Promise<void> {
-    if (this.actionUserId()) return;
+    if (!this.canManageUsers() || this.actionUserId()) return;
     const validationError = validatePasswordReset(this.newPassword(), this.passwordConfirmation());
     if (validationError) {
       this.errorMessage.set(validationError);
@@ -142,7 +147,7 @@ export class UserManagementPage implements OnInit {
   }
 
   async deleteUser(user: ManagedUser): Promise<void> {
-    if (this.isCurrentUser(user) || this.actionUserId()) return;
+    if (!this.canManageUsers() || this.isCurrentUser(user) || this.actionUserId()) return;
     this.actionUserId.set(user.id);
     this.clearMessages();
     try {
@@ -179,6 +184,11 @@ export class UserManagementPage implements OnInit {
   private async load(showLoader = true): Promise<void> {
     if (showLoader) this.loading.set(true);
     try {
+      if (!this.canManageUsers()) {
+        this.users.set([]);
+        this.drafts.set({});
+        return;
+      }
       const users = await this.userManagement.listUsers();
       this.users.set(users);
       this.drafts.set(
@@ -193,6 +203,42 @@ export class UserManagementPage implements OnInit {
       this.errorMessage.set(error instanceof Error ? error.message : 'Unable to load users.');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  selectWorker(value: string): void {
+    if (!value) {
+      this.auth.stopImpersonation();
+      this.successMessage.set('Returned to your actual role.');
+      this.errorMessage.set(null);
+      return;
+    }
+    const worker = this.workers().find((candidate) => candidate.id === value);
+    if (!worker) return;
+    this.auth.startImpersonation(worker);
+    this.successMessage.set(`Now viewing as ${worker.display_name || worker.email}.`);
+    this.errorMessage.set(null);
+  }
+
+  async refreshWorkers(): Promise<void> {
+    await this.loadWorkers();
+  }
+
+  private async loadWorkers(): Promise<void> {
+    this.loadingWorkers.set(true);
+    try {
+      const workers = await this.auth.listImpersonatableWorkers();
+      this.workers.set(workers);
+      const activeWorkerId = this.auth.impersonatedProfile()?.id;
+      if (activeWorkerId && !workers.some((worker) => worker.id === activeWorkerId)) {
+        this.auth.stopImpersonation();
+      }
+    } catch (error) {
+      this.errorMessage.set(
+        error instanceof Error ? error.message : 'Unable to load factory workers.',
+      );
+    } finally {
+      this.loadingWorkers.set(false);
     }
   }
 }

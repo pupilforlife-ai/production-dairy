@@ -36,7 +36,7 @@ export class PackingVerificationService {
         this.supabase
           .from('loose_stock_consolidation_pools')
           .select(
-            'sku_id, sku_code, sku_description, packets_per_case, available_loose_packets, possible_cases, remainder_loose_packets, oldest_retained_at',
+            'sku_id, sku_code, sku_description, packets_per_case, available_loose_packets, possible_cases, remainder_loose_packets, oldest_retained_at, pool_key',
           )
           .order('sku_code'),
         this.supabase
@@ -103,9 +103,14 @@ export class PackingVerificationService {
     if (error) throw error;
   }
 
-  async consolidateLooseStock(skuId: string, caseQuantity: number): Promise<void> {
+  async consolidateLooseStock(
+    skuId: string,
+    packetsPerCase: number,
+    caseQuantity: number,
+  ): Promise<void> {
     const { error } = await this.supabase.rpc('consolidate_loose_stock_to_distribution', {
       requested_sku_id: skuId,
+      requested_packets_per_case: packetsPerCase,
       requested_case_quantity: caseQuantity,
     });
     if (error) throw error;

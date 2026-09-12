@@ -407,7 +407,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (pool of loosePools(); track pool.sku_id) {
+              @for (pool of loosePools(); track poolKey(pool)) {
                 <tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/35">
                   <th class="border-r border-slate-800 px-4 py-3" scope="row">
                     <p class="font-mono font-black text-slate-100">{{ pool.sku_code }}</p>
@@ -441,7 +441,7 @@
                         <span class="text-xs text-slate-500">
                           {{ pool.packets_per_case - pool.available_loose_packets }} more needed
                         </span>
-                      } @else if (pendingConsolidationSkuId() === pool.sku_id) {
+                      } @else if (pendingConsolidationSkuId() === poolKey(pool)) {
                         <div class="flex items-end justify-end gap-2">
                           <label class="text-left">
                             <span class="mb-1 block text-xs text-slate-500">Cases to make</span>
@@ -470,7 +470,9 @@
                             (click)="consolidateLooseStock(pool)"
                           >
                             {{
-                              consolidatingSkuId() === pool.sku_id ? 'Sending…' : 'Confirm and send'
+                              consolidatingSkuId() === poolKey(pool)
+                                ? 'Sending…'
+                                : 'Confirm and send'
                             }}
                           </button>
                         </div>

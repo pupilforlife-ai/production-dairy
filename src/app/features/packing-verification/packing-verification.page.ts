@@ -221,14 +221,14 @@ export class PackingVerificationPage implements OnInit {
   }
 
   consolidationCases(pool: LooseStockPool): number {
-    return this.consolidationCaseQuantities()[pool.sku_id] ?? pool.possible_cases;
+    return this.consolidationCaseQuantities()[this.poolKey(pool)] ?? pool.possible_cases;
   }
 
   updateConsolidationCases(pool: LooseStockPool, value: string): void {
     const parsed = Number(value);
     this.consolidationCaseQuantities.update((quantities) => ({
       ...quantities,
-      [pool.sku_id]: Number.isFinite(parsed) ? Math.max(1, Math.trunc(parsed)) : 1,
+      [this.poolKey(pool)]: Number.isFinite(parsed) ? Math.max(1, Math.trunc(parsed)) : 1,
     }));
   }
 
@@ -236,9 +236,9 @@ export class PackingVerificationPage implements OnInit {
     this.clearMessages();
     this.consolidationCaseQuantities.update((quantities) => ({
       ...quantities,
-      [pool.sku_id]: pool.possible_cases,
+      [this.poolKey(pool)]: pool.possible_cases,
     }));
-    this.pendingConsolidationSkuId.set(pool.sku_id);
+    this.pendingConsolidationSkuId.set(this.poolKey(pool));
   }
 
   cancelConsolidation(): void {
@@ -248,6 +248,12 @@ export class PackingVerificationPage implements OnInit {
   async consolidateLooseStock(pool: LooseStockPool): Promise<void> {
     const caseQuantity = this.consolidationCases(pool);
     this.clearMessages();
+    if (!pool.packets_per_case || pool.packets_per_case <= 0) {
+      this.errorMessage.set(
+        `${pool.sku_code} needs a packets-per-case value before consolidation.`,
+      );
+      return;
+    }
     if (caseQuantity <= 0 || caseQuantity > pool.possible_cases) {
       this.errorMessage.set(
         `Choose between 1 and ${pool.possible_cases} full cases for ${pool.sku_code}.`,
@@ -255,9 +261,9 @@ export class PackingVerificationPage implements OnInit {
       return;
     }
 
-    this.consolidatingSkuId.set(pool.sku_id);
+    this.consolidatingSkuId.set(this.poolKey(pool));
     try {
-      await this.service.consolidateLooseStock(pool.sku_id, caseQuantity);
+      await this.service.consolidateLooseStock(pool.sku_id, pool.packets_per_case, caseQuantity);
       this.successMessage.set(
         `${caseQuantity} consolidated ${pool.sku_code} ${caseQuantity === 1 ? 'case' : 'cases'} sent to distribution with source traceability retained.`,
       );
@@ -284,6 +290,10 @@ export class PackingVerificationPage implements OnInit {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  poolKey(pool: LooseStockPool): string {
+    return pool.pool_key ?? `${pool.sku_id}:${pool.packets_per_case ?? 'unconfigured'}`;
   }
 
   private updateRow(key: string, changes: Partial<SkuPackingVerificationRow>): void {

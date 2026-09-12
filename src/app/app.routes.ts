@@ -2,7 +2,6 @@ import { Routes } from '@angular/router';
 import {
   authGuard,
   betaLandingGuard,
-  betaOwnerGuard,
   fullReleaseGuard,
   guestGuard,
   roleGuard,
@@ -27,7 +26,7 @@ export const routes: Routes = [
   },
   {
     path: 'receiving',
-    canActivate: [authGuard, betaOwnerGuard],
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/receiving/receiving.page').then((page) => page.ReceivingPage),
   },

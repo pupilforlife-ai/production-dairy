@@ -110,6 +110,7 @@ export class ReceivingPage implements OnInit {
   }
 
   async submit(): Promise<void> {
+    if (!this.auth.hasRole('owner')) return;
     if (this.form.invalid || this.submitting()) {
       this.form.markAllAsTouched();
       return;
@@ -199,7 +200,7 @@ export class ReceivingPage implements OnInit {
   }
 
   async closeProduction(lot: SourceLotSummary): Promise<void> {
-    if (this.closing() || this.closingId() !== lot.id) return;
+    if (!this.auth.hasRole('owner') || this.closing() || this.closingId() !== lot.id) return;
 
     this.closing.set(true);
     this.errorMessage.set(null);
@@ -246,7 +247,12 @@ export class ReceivingPage implements OnInit {
   }
 
   async recordMilkSale(lot: SourceLotSummary): Promise<void> {
-    if (this.saleForm.invalid || this.recordingSale() || this.saleLotId() !== lot.id) {
+    if (
+      !this.auth.hasRole('owner') ||
+      this.saleForm.invalid ||
+      this.recordingSale() ||
+      this.saleLotId() !== lot.id
+    ) {
       this.saleForm.markAllAsTouched();
       return;
     }
@@ -299,7 +305,12 @@ export class ReceivingPage implements OnInit {
   }
 
   async submitEdit(lot: SourceLotSummary): Promise<void> {
-    if (this.editForm.invalid || this.submitting() || this.editingId() !== lot.id) {
+    if (
+      !this.auth.hasRole('owner') ||
+      this.editForm.invalid ||
+      this.submitting() ||
+      this.editingId() !== lot.id
+    ) {
       this.editForm.markAllAsTouched();
       return;
     }

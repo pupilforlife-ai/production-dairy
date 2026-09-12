@@ -76,30 +76,28 @@
       </a>
     }
 
-    @if (!betaMode || auth.hasRole('owner')) {
-      <a
-        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
-        routerLink="/receiving"
-        routerLinkActive="bg-emerald-950 text-emerald-300"
-        aria-label="Milk receiving"
+    <a
+      class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+      routerLink="/receiving"
+      routerLinkActive="bg-emerald-950 text-emerald-300"
+      aria-label="Milk receiving"
+    >
+      <svg
+        class="size-8 shrink-0 p-1"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        aria-hidden="true"
       >
-        <svg
-          class="size-8 shrink-0 p-1"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
-        >
-          <path d="M12 2S5.5 9.2 5.5 14.5a6.5 6.5 0 0 0 13 0C18.5 9.2 12 2 12 2Z"></path>
-          <path d="M9 16.5c.7 1 1.7 1.5 3 1.5"></path>
-        </svg>
-        <span
-          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
-          >Milk receiving</span
-        >
-      </a>
-    }
+        <path d="M12 2S5.5 9.2 5.5 14.5a6.5 6.5 0 0 0 13 0C18.5 9.2 12 2 12 2Z"></path>
+        <path d="M9 16.5c.7 1 1.7 1.5 3 1.5"></path>
+      </svg>
+      <span
+        class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        >Milk receiving</span
+      >
+    </a>
 
     <a
       class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"

@@ -47,9 +47,15 @@
         (ngSubmit)="createRecipe()"
       >
         <div>
-          <h2 class="text-xl font-bold">Create a new recipe</h2>
+          <h2 class="text-xl font-bold">
+            {{ editingRecipeId() ? 'Update existing recipe' : 'Create a new recipe' }}
+          </h2>
           <p class="mt-1 text-sm text-slate-400">
-            This creates a confidential recipe and its first permanent version.
+            {{
+              editingRecipeId()
+                ? 'This creates the next version and keeps older production history unchanged.'
+                : 'This creates a confidential recipe and its first permanent version.'
+            }}
           </p>
         </div>
 
@@ -323,7 +329,13 @@
             type="submit"
             [disabled]="saving()"
           >
-            {{ saving() ? 'Creating…' : 'Create Recipe Version 1' }}
+            {{
+              saving()
+                ? 'Saving…'
+                : editingRecipeId()
+                  ? 'Save Next Recipe Version'
+                  : 'Create Recipe Version 1'
+            }}
           </button>
         </div>
       </form>
@@ -352,20 +364,29 @@
                 </p>
               </div>
               @if (version) {
-                <label class="block">
-                  <span
-                    class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500"
-                    >Requested basis ({{ version.units_of_measure?.code }})</span
+                <div class="flex flex-wrap items-end gap-2">
+                  <label class="block">
+                    <span
+                      class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+                      >Requested basis ({{ version.units_of_measure?.code }})</span
+                    >
+                    <input
+                      class="w-40 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-right outline-none focus:border-emerald-500"
+                      type="number"
+                      min="0.001"
+                      step="0.1"
+                      [value]="requestedQuantities()[recipe.id]"
+                      (input)="updateRequestedQuantity(recipe.id, $event)"
+                    />
+                  </label>
+                  <button
+                    class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-800"
+                    type="button"
+                    (click)="editRecipe(recipe)"
                   >
-                  <input
-                    class="w-40 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-right outline-none focus:border-emerald-500"
-                    type="number"
-                    min="0.001"
-                    step="0.1"
-                    [value]="requestedQuantities()[recipe.id]"
-                    (input)="updateRequestedQuantity(recipe.id, $event)"
-                  />
-                </label>
+                    Update recipe
+                  </button>
+                </div>
               }
             </div>
 

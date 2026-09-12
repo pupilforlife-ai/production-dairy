@@ -8,6 +8,7 @@ import type {
   InventoryLocation,
   InventoryMovementSummary,
   InventoryReference,
+  InventoryUsageSummary,
   InventoryUnit,
 } from './inventory.models';
 
@@ -24,6 +25,7 @@ export class InventoryService {
       batchesResult,
       packingResult,
       movementsResult,
+      usageSummaryResult,
     ] = await Promise.all([
       this.supabase
         .from('inventory_items')
@@ -61,6 +63,11 @@ export class InventoryService {
         )
         .order('occurred_at', { ascending: false })
         .limit(100),
+      this.supabase
+        .from('inventory_usage_by_milk_lot')
+        .select('*')
+        .order('last_used_at', { ascending: false })
+        .limit(200),
     ]);
 
     for (const result of [
@@ -73,6 +80,12 @@ export class InventoryService {
       movementsResult,
     ]) {
       if (result.error) throw result.error;
+    }
+    if (
+      usageSummaryResult.error &&
+      !['42P01', 'PGRST205'].includes(usageSummaryResult.error.code ?? '')
+    ) {
+      throw usageSummaryResult.error;
     }
 
     return {
@@ -92,6 +105,7 @@ export class InventoryService {
           new Date(run.completed_at).toLocaleDateString(),
       })) as InventoryReference[],
       movements: movementsResult.data as unknown as InventoryMovementSummary[],
+      usageSummaries: (usageSummaryResult.data ?? []) as unknown as InventoryUsageSummary[],
     };
   }
 

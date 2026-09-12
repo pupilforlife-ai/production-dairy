@@ -1,5 +1,8 @@
 export interface RecipeComponent {
   id: string;
+  ingredient_id: string | null;
+  material_product_id: string | null;
+  uom_id: string;
   quantity: number;
   tolerance_min: number | null;
   tolerance_max: number | null;
@@ -13,6 +16,7 @@ export interface RecipeVersion {
   id: string;
   version_number: number;
   basis_quantity: number;
+  basis_uom_id: string;
   effective_from: string;
   effective_to: string | null;
   units_of_measure: { code: string } | null;
@@ -21,6 +25,7 @@ export interface RecipeVersion {
 
 export interface RecipeSummary {
   id: string;
+  product_id: string;
   name: string;
   confidential: boolean;
   active: boolean;

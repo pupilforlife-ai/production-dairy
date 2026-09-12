@@ -37,6 +37,7 @@ export class RecipesPage implements OnInit {
   readonly units = signal<RecipeUnitOption[]>([]);
   readonly requestedQuantities = signal<Record<string, number>>({});
   readonly showCreateForm = signal(false);
+  readonly editingRecipeId = signal<string | null>(null);
   readonly newIngredientForIndex = signal<number | null>(null);
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -80,8 +81,43 @@ export class RecipesPage implements OnInit {
   }
 
   toggleCreateForm(): void {
+    this.editingRecipeId.set(null);
     this.showCreateForm.set(!this.showCreateForm());
     this.newIngredientForIndex.set(null);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+  }
+
+  editRecipe(recipe: RecipeSummary): void {
+    const version = this.currentVersion(recipe);
+    if (!version) return;
+    this.editingRecipeId.set(recipe.id);
+    this.showCreateForm.set(true);
+    this.newIngredientForIndex.set(null);
+    this.createForm.reset({
+      productId: recipe.product_id,
+      name: recipe.name,
+      basisQuantity: Number(version.basis_quantity),
+      basisUomId: version.basis_uom_id,
+      effectiveFrom: this.today(),
+    });
+    this.components.clear();
+    for (const component of [...version.recipe_components].sort(
+      (left, right) => (left.sequence ?? 0) - (right.sequence ?? 0),
+    )) {
+      const row = this.createComponentGroup();
+      const type: RecipeComponentType = component.ingredient_id ? 'ingredient' : 'product';
+      row.setValue({
+        type,
+        materialId: component.ingredient_id ?? component.material_product_id ?? '',
+        quantity: Number(component.quantity),
+        uomId: component.uom_id,
+        toleranceMin: component.tolerance_min,
+        toleranceMax: component.tolerance_max,
+      });
+      this.components.push(row);
+    }
+    if (this.components.length === 0) this.components.push(this.createComponentGroup());
     this.errorMessage.set(null);
     this.successMessage.set(null);
   }
@@ -193,22 +229,35 @@ export class RecipesPage implements OnInit {
     this.errorMessage.set(null);
     this.successMessage.set(null);
     try {
-      await this.recipeService.createRecipe({
-        productId: values.productId,
-        name: values.name,
-        basisQuantity: values.basisQuantity,
-        basisUomId: values.basisUomId,
-        effectiveFrom: values.effectiveFrom,
-        components: values.components.map((component) => ({
-          type: component.type,
-          materialId: component.materialId,
-          quantity: Number(component.quantity),
-          uomId: component.uomId,
-          toleranceMin: component.toleranceMin,
-          toleranceMax: component.toleranceMax,
-        })),
-      });
-      this.successMessage.set(`${values.name.trim()} was created as Version 1.`);
+      const components = values.components.map((component) => ({
+        type: component.type,
+        materialId: component.materialId,
+        quantity: Number(component.quantity),
+        uomId: component.uomId,
+        toleranceMin: component.toleranceMin,
+        toleranceMax: component.toleranceMax,
+      }));
+      const editingRecipeId = this.editingRecipeId();
+      if (editingRecipeId) {
+        await this.recipeService.createRecipeVersion({
+          recipeId: editingRecipeId,
+          basisQuantity: values.basisQuantity,
+          basisUomId: values.basisUomId,
+          effectiveFrom: values.effectiveFrom,
+          components,
+        });
+        this.successMessage.set(`${values.name.trim()} was updated as a new recipe version.`);
+      } else {
+        await this.recipeService.createRecipe({
+          productId: values.productId,
+          name: values.name,
+          basisQuantity: values.basisQuantity,
+          basisUomId: values.basisUomId,
+          effectiveFrom: values.effectiveFrom,
+          components,
+        });
+        this.successMessage.set(`${values.name.trim()} was created as Version 1.`);
+      }
       this.resetCreateForm();
       this.showCreateForm.set(false);
       await this.load(false);
@@ -280,6 +329,7 @@ export class RecipesPage implements OnInit {
     this.components.clear();
     this.components.push(this.createComponentGroup());
     this.newIngredientForIndex.set(null);
+    this.editingRecipeId.set(null);
   }
 
   private createComponentGroup(): RecipeComponentGroup {

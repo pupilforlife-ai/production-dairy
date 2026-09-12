@@ -12,6 +12,7 @@ import {
   type InventoryLocation,
   type InventoryMovementSummary,
   type InventoryReference,
+  type InventoryUsageSummary,
   type InventoryUnit,
 } from './inventory.models';
 import { InventoryService } from './inventory.service';
@@ -34,8 +35,10 @@ export class InventoryPage implements OnInit {
   readonly productionReferences = signal<InventoryReference[]>([]);
   readonly packingReferences = signal<InventoryReference[]>([]);
   readonly movements = signal<InventoryMovementSummary[]>([]);
+  readonly usageSummaries = signal<InventoryUsageSummary[]>([]);
   readonly activeAction = signal<InventoryAction>(null);
   readonly consumptionReferenceType = signal<ConsumptionReferenceType>('none');
+  readonly selectedBalanceKey = signal<string | null>(null);
   readonly itemTypeFilter = signal('');
   readonly locationFilter = signal('');
   readonly loading = signal(true);
@@ -60,6 +63,26 @@ export class InventoryPage implements OnInit {
   readonly representedLots = computed(
     () => new Set(this.balances().map((balance) => balance.inventory_lot_id)).size,
   );
+  readonly selectedBalance = computed(() => {
+    const key = this.selectedBalanceKey();
+    return key ? this.findBalance(key) : null;
+  });
+  readonly selectedMovements = computed(() => {
+    const balance = this.selectedBalance();
+    if (!balance) return [];
+    return this.movements().filter(
+      (movement) =>
+        movement.inventory_items?.code === balance.item_code &&
+        movement.inventory_lots?.lot_code === balance.lot_code,
+    );
+  });
+  readonly selectedUsageSummaries = computed(() => {
+    const balance = this.selectedBalance();
+    if (!balance) return [];
+    return this.usageSummaries().filter(
+      (summary) => summary.inventory_item_id === balance.inventory_item_id,
+    );
+  });
 
   readonly itemForm = new FormGroup({
     itemType: new FormControl<InventoryItemType>('packaging', { nonNullable: true }),
@@ -111,7 +134,7 @@ export class InventoryPage implements OnInit {
 
   readonly adjustForm = new FormGroup({
     balanceKey: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    adjustmentQuantity: new FormControl<number | null>(null, [Validators.required]),
+    countedQuantity: new FormControl<number | null>(null, [Validators.required, Validators.min(0)]),
     reason: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     occurredAt: new FormControl(this.localDateTime(), {
       nonNullable: true,
@@ -137,6 +160,25 @@ export class InventoryPage implements OnInit {
   selectConsumeBalance(key: string): void {
     const balance = this.findBalance(key);
     if (balance) this.consumeForm.controls.quantity.setValue(Number(balance.current_quantity));
+  }
+
+  selectBalanceForHistory(balance: InventoryBalance): void {
+    this.selectedBalanceKey.set(balanceKey(balance));
+  }
+
+  startCount(balance: InventoryBalance): void {
+    if (!this.auth.hasRole('owner')) return;
+    const key = balanceKey(balance);
+    this.selectedBalanceKey.set(key);
+    this.activeAction.set('adjust');
+    this.adjustForm.reset({
+      balanceKey: key,
+      countedQuantity: Number(balance.current_quantity),
+      reason: '',
+      occurredAt: this.localDateTime(),
+    });
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
   }
 
   setConsumptionReference(type: string): void {
@@ -265,16 +307,17 @@ export class InventoryPage implements OnInit {
     }
     const values = this.adjustForm.getRawValue();
     const balance = this.findBalance(values.balanceKey);
-    if (!balance || values.adjustmentQuantity === null) return;
-    if (values.adjustmentQuantity === 0) {
-      this.errorMessage.set('Adjustment quantity cannot be zero.');
+    if (!balance || values.countedQuantity === null) return;
+    const adjustmentQuantity = values.countedQuantity - Number(balance.current_quantity);
+    if (adjustmentQuantity === 0) {
+      this.errorMessage.set('Counted quantity is unchanged.');
       return;
     }
     await this.runSave(async () => {
       await this.inventoryService.adjust({
         lotId: balance.inventory_lot_id,
         locationId: balance.storage_location_id,
-        adjustmentQuantity: values.adjustmentQuantity!,
+        adjustmentQuantity,
         reason: values.reason,
         occurredAt: values.occurredAt,
       });
@@ -295,6 +338,10 @@ export class InventoryPage implements OnInit {
       this.productionReferences.set(data.productionReferences);
       this.packingReferences.set(data.packingReferences);
       this.movements.set(data.movements);
+      this.usageSummaries.set(data.usageSummaries);
+      if (!this.selectedBalanceKey() && data.balances.length > 0) {
+        this.selectedBalanceKey.set(balanceKey(data.balances[0]));
+      }
       if (!this.receiveForm.controls.destinationLocationId.value) {
         this.receiveForm.controls.destinationLocationId.setValue(
           this.locationId('BULK_INGREDIENT'),

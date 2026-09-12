@@ -60,6 +60,20 @@ export interface InventoryMovementSummary {
   packing_runs: { id: string; skus: { code: string } | null } | null;
 }
 
+export interface InventoryUsageSummary {
+  inventory_item_id: string;
+  item_code: string;
+  item_name: string;
+  source_lot_id: string;
+  source_lot_code: string;
+  round_count: number;
+  d_rounds: number;
+  cs_rounds: number;
+  total_quantity: number;
+  uom_code: string;
+  last_used_at: string;
+}
+
 export interface InventoryData {
   items: InventoryItem[];
   balances: InventoryBalance[];
@@ -68,6 +82,7 @@ export interface InventoryData {
   productionReferences: InventoryReference[];
   packingReferences: InventoryReference[];
   movements: InventoryMovementSummary[];
+  usageSummaries: InventoryUsageSummary[];
 }
 
 export function balanceKey(balance: InventoryBalance): string {

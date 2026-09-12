@@ -383,7 +383,8 @@
         <div class="md:col-span-2 lg:col-span-4">
           <h2 class="text-xl font-bold">Owner stocktake adjustment</h2>
           <p class="mt-1 text-sm text-slate-400">
-            Enter a positive quantity to add stock or a negative quantity to reduce stock.
+            Enter the physical quantity counted. The system records only the difference as an
+            adjustment movement.
           </p>
         </div>
         <label class="md:col-span-2"
@@ -402,12 +403,13 @@
           </select></label
         >
         <label
-          ><span class="mb-1 block text-sm font-medium">Adjustment (+/−)</span
+          ><span class="mb-1 block text-sm font-medium">Physical count</span
           ><input
             class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
             type="number"
+            min="0"
             step="0.1"
-            formControlName="adjustmentQuantity"
+            formControlName="countedQuantity"
         /></label>
         <label
           ><span class="mb-1 block text-sm font-medium">Required reason</span
@@ -432,27 +434,13 @@
       </form>
     }
 
-    <section class="mt-7 grid gap-3 sm:grid-cols-3">
-      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Ingredient items</p>
-        <p class="mt-1 text-2xl font-bold">{{ ingredientCount() }}</p>
-      </article>
-      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Packaging items</p>
-        <p class="mt-1 text-2xl font-bold">{{ packagingCount() }}</p>
-      </article>
-      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Active stock lots</p>
-        <p class="mt-1 text-2xl font-bold text-emerald-300">{{ representedLots() }}</p>
-      </article>
-    </section>
-
-    <section class="mt-9">
+    <section class="mt-7">
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 class="text-xl font-bold">Stock by location</h2>
           <p class="mt-1 text-sm text-slate-400">
-            Live balance calculated from the movement ledger.
+            {{ ingredientCount() }} ingredient items · {{ packagingCount() }} packaging items ·
+            {{ representedLots() }} active stock lots
           </p>
         </div>
         <div class="grid w-full gap-3 sm:grid-cols-2 md:w-auto">
@@ -480,99 +468,184 @@
       @if (loading()) {
         <p class="mt-5 text-slate-400">Loading inventory…</p>
       } @else {
-        <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          @for (balance of filteredBalances(); track keyForBalance(balance)) {
-            <article class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <div class="flex items-start justify-between gap-3">
-                <div>
-                  <p class="font-bold">{{ balance.item_name }}</p>
-                  <p class="mt-1 font-mono text-xs text-slate-400">
-                    {{ balance.item_code }} · Lot {{ balance.lot_code }}
-                  </p>
-                </div>
-                <span
-                  class="rounded-full px-2 py-1 text-xs font-bold capitalize"
-                  [class.bg-sky-950]="balance.item_type === 'ingredient'"
-                  [class.text-sky-300]="balance.item_type === 'ingredient'"
-                  [class.bg-violet-950]="balance.item_type === 'packaging'"
-                  [class.text-violet-300]="balance.item_type === 'packaging'"
-                  >{{ balance.item_type }}</span
+        <div class="mt-4 overflow-x-auto border border-slate-800 bg-slate-900">
+          <table class="w-full min-w-[920px] border-collapse text-left text-sm">
+            <thead class="bg-slate-950/70 text-xs uppercase tracking-wider text-slate-400">
+              <tr>
+                <th class="border-b border-r border-slate-800 px-3 py-3" scope="col">Count</th>
+                <th class="border-b border-r border-slate-800 px-3 py-3" scope="col">Item</th>
+                <th class="border-b border-r border-slate-800 px-3 py-3" scope="col">Item code</th>
+                <th class="border-b border-r border-slate-800 px-3 py-3 text-right" scope="col">
+                  Quantity
+                </th>
+                <th class="border-b border-r border-slate-800 px-3 py-3" scope="col">Batch code</th>
+                <th class="border-b border-r border-slate-800 px-3 py-3" scope="col">Location</th>
+                <th class="border-b border-slate-800 px-3 py-3" scope="col">History</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (balance of filteredBalances(); track keyForBalance(balance)) {
+                <tr
+                  class="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/35"
+                  [class.bg-slate-800]="selectedBalanceKey() === keyForBalance(balance)"
                 >
-              </div>
-              <p class="mt-5 font-mono text-2xl font-bold text-emerald-300">
-                {{ balance.current_quantity | number: '1.0-3' }} {{ balance.uom_code }}
-              </p>
-              <p class="mt-1 font-semibold">{{ balance.location_name }}</p>
-              <p class="mt-3 text-xs text-slate-500">
-                Received {{ balance.received_at | date: 'd MMM y' }}
-                @if (balance.expiry_date) {
-                  · Expires {{ balance.expiry_date | date: 'd MMM y' }}
-                }
-              </p>
-            </article>
-          } @empty {
-            <div
-              class="rounded-2xl border border-dashed border-slate-700 px-5 py-12 text-center md:col-span-2 xl:col-span-3"
-            >
-              <p class="font-bold">No stock balances match these filters.</p>
-              <p class="mt-1 text-sm text-slate-400">
-                Receive an ingredient or packaging lot to begin.
-              </p>
-            </div>
-          }
+                  <td class="border-r border-slate-800 px-3 py-3">
+                    @if (auth.hasRole('owner')) {
+                      <button
+                        class="border border-violet-800 px-3 py-1.5 text-xs font-bold text-violet-200 hover:bg-violet-950"
+                        type="button"
+                        (click)="startCount(balance)"
+                      >
+                        Count
+                      </button>
+                    } @else {
+                      <span class="text-xs text-slate-600">Owner</span>
+                    }
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 font-semibold">
+                    {{ balance.item_name }}
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 font-mono">
+                    {{ balance.item_code }}
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 text-right font-mono font-bold">
+                    {{ balance.current_quantity | number: '1.0-3' }} {{ balance.uom_code }}
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 font-mono">
+                    {{ balance.lot_code }}
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3">
+                    {{ balance.location_name }}
+                  </td>
+                  <td class="px-3 py-3">
+                    <button
+                      class="text-xs font-bold text-emerald-300 hover:text-emerald-200"
+                      type="button"
+                      (click)="selectBalanceForHistory(balance)"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="px-5 py-8 text-center text-slate-400" colspan="7">
+                    No stock balances match these filters.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
       }
     </section>
 
     <section class="mt-10">
-      <h2 class="text-xl font-bold">Recent inventory movements</h2>
-      <div class="mt-4 overflow-hidden rounded-2xl border border-slate-800">
-        @for (movement of movements(); track movement.id) {
-          <article
-            class="grid gap-3 border-b border-slate-800 bg-slate-900 p-4 last:border-b-0 md:grid-cols-[1.3fr_0.8fr_1.5fr_1fr]"
-          >
-            <div>
-              <p class="font-bold">{{ movement.inventory_items?.name }}</p>
-              <p class="font-mono text-xs text-slate-500">
-                {{ movement.inventory_items?.code }} · {{ movement.inventory_lots?.lot_code }}
-              </p>
-            </div>
-            <div>
-              <p class="text-xs font-bold uppercase text-slate-500">Movement</p>
-              <p class="mt-1 font-semibold capitalize">
-                {{ movement.movement_type.replace('_', ' ') }}
-              </p>
-            </div>
-            <div>
-              <p class="text-xs font-bold uppercase text-slate-500">Route / reference</p>
-              <p class="mt-1 text-sm">
-                {{ movement.source_location?.name || 'External' }} →
-                {{ movement.destination_location?.name || 'Consumed' }}
-              </p>
-              @if (movement.production_batches || movement.packing_runs) {
-                <p class="mt-1 text-xs text-slate-500">
-                  {{
-                    movement.production_batches?.batch_code ||
-                      movement.packing_runs?.skus?.code + ' packing run'
-                  }}
-                </p>
+      <h2 class="text-xl font-bold">Selected item history</h2>
+      @if (selectedBalance(); as balance) {
+        <p class="mt-1 text-sm text-slate-400">
+          {{ balance.item_name }} · {{ balance.item_code }} · Batch {{ balance.lot_code }}
+        </p>
+        <div class="mt-4 overflow-x-auto border border-slate-800 bg-slate-900">
+          <table class="w-full min-w-[780px] border-collapse text-left text-sm">
+            <thead class="bg-slate-950/70 text-xs uppercase tracking-wider text-slate-400">
+              <tr>
+                <th class="border-b border-r border-slate-800 px-3 py-3">Date</th>
+                <th class="border-b border-r border-slate-800 px-3 py-3">Movement</th>
+                <th class="border-b border-r border-slate-800 px-3 py-3">Route / reference</th>
+                <th class="border-b border-r border-slate-800 px-3 py-3 text-right">Quantity</th>
+                <th class="border-b border-slate-800 px-3 py-3">Reason / notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (movement of selectedMovements(); track movement.id) {
+                <tr class="border-b border-slate-800 last:border-b-0">
+                  <td class="border-r border-slate-800 px-3 py-3">
+                    {{ movement.occurred_at | date: 'd MMM y, HH:mm' }}
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 capitalize">
+                    {{ movement.movement_type.replace('_', ' ') }}
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3">
+                    {{ movement.source_location?.name || 'External' }} →
+                    {{ movement.destination_location?.name || 'Consumed' }}
+                    @if (movement.production_batches || movement.packing_runs) {
+                      <span class="block text-xs text-slate-500">
+                        {{
+                          movement.production_batches?.batch_code ||
+                            movement.packing_runs?.skus?.code + ' packing run'
+                        }}
+                      </span>
+                    }
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 text-right font-mono">
+                    {{ movement.quantity }} {{ movement.units_of_measure?.code }}
+                  </td>
+                  <td class="px-3 py-3 text-slate-400">
+                    {{ movement.reason || movement.notes || '—' }}
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="px-5 py-8 text-center text-slate-400" colspan="5">
+                    No movement history loaded for this stock row.
+                  </td>
+                </tr>
               }
-            </div>
-            <div class="text-right">
-              <p class="font-mono font-bold">
-                {{ movement.quantity }} {{ movement.units_of_measure?.code }}
-              </p>
-              <p class="mt-1 text-xs text-slate-500">
-                {{ movement.occurred_at | date: 'd MMM y, HH:mm' }}
-              </p>
-            </div>
-          </article>
-        } @empty {
-          <p class="bg-slate-900 px-5 py-8 text-center text-slate-400">
-            No inventory movements recorded yet.
-          </p>
-        }
-      </div>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="mt-7 font-bold">Milk lot usage summary</h3>
+        <div class="mt-3 overflow-x-auto border border-slate-800 bg-slate-900">
+          <table class="w-full min-w-[780px] border-collapse text-left text-sm">
+            <thead class="bg-slate-950/70 text-xs uppercase tracking-wider text-slate-400">
+              <tr>
+                <th class="border-b border-r border-slate-800 px-3 py-3">Milk lot</th>
+                <th class="border-b border-r border-slate-800 px-3 py-3 text-right">Rounds</th>
+                <th class="border-b border-r border-slate-800 px-3 py-3 text-right">D</th>
+                <th class="border-b border-r border-slate-800 px-3 py-3 text-right">C/S</th>
+                <th class="border-b border-r border-slate-800 px-3 py-3 text-right">Used</th>
+                <th class="border-b border-slate-800 px-3 py-3">Last used</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (summary of selectedUsageSummaries(); track summary.source_lot_id) {
+                <tr class="border-b border-slate-800 last:border-b-0">
+                  <td class="border-r border-slate-800 px-3 py-3 font-mono">
+                    {{ summary.source_lot_code }}
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 text-right">
+                    {{ summary.round_count }}
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 text-right">
+                    {{ summary.d_rounds }}
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 text-right">
+                    {{ summary.cs_rounds }}
+                  </td>
+                  <td class="border-r border-slate-800 px-3 py-3 text-right font-mono">
+                    {{ summary.total_quantity | number: '1.0-3' }} {{ summary.uom_code }}
+                  </td>
+                  <td class="px-3 py-3">
+                    {{ summary.last_used_at | date: 'd MMM y, HH:mm' }}
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="px-5 py-8 text-center text-slate-400" colspan="6">
+                    No milk-lot usage summary is available for this item yet.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="mt-4 border border-dashed border-slate-700 px-5 py-8 text-center text-slate-400">
+          Select a stock row to view its movement and milk-lot usage history.
+        </p>
+      }
     </section>
   </div>
 </main>

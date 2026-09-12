@@ -12,6 +12,33 @@ html[data-theme='light'] body {
   background: #f8fafc;
 }
 
+html[data-theme='dark'] .app-navigation-rail {
+  background-color: #062f3a;
+  border-color: #0e7490;
+}
+
+html[data-theme='dark'] .app-navigation-rail .border-slate-800,
+html[data-theme='dark'] .app-navigation-rail .border-slate-700 {
+  border-color: #0e7490;
+}
+
+html[data-theme='dark'] .app-navigation-rail .hover\:bg-slate-800:hover {
+  background-color: #164e63;
+}
+
+html[data-theme='dark'] .app-navigation-rail .bg-emerald-950 {
+  background-color: #083344;
+}
+
+html[data-theme='dark'] .app-navigation-rail .text-emerald-300,
+html[data-theme='dark'] .app-navigation-rail .text-emerald-400 {
+  color: #67e8f9;
+}
+
+html[data-theme='dark'] .app-navigation-rail select {
+  background-color: #022c3a;
+}
+
 html[data-theme='light']
   :where(
     .bg-slate-950,

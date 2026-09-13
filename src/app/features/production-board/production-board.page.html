@@ -334,8 +334,10 @@
                             [attr.aria-label]="'Paneer type for round ' + batch.round_number"
                             (change)="updateRoundCell(batch, 'type', typeSelect.value)"
                           >
-                            <option value="D">D</option>
-                            <option value="C/S">C/S</option>
+                            <option value="D" [selected]="batch.products?.variant === 'D'">D</option>
+                            <option value="C/S" [selected]="batch.products?.variant === 'C/S'">
+                              C/S
+                            </option>
                           </select>
                           @if (batch.products?.variant === 'C/S') {
                             <button
@@ -538,9 +540,14 @@
                             [attr.aria-label]="'Cut format for round ' + batch.round_number"
                             (change)="updateRoundCell(batch, 'cut_format', cutFormatSelect.value)"
                           >
-                            <option value="">Select cut</option>
+                            <option value="" [selected]="!batch.cut_format">Select cut</option>
                             @for (format of cutFormats; track format.value) {
-                              <option [value]="format.value">{{ format.label }}</option>
+                              <option
+                                [value]="format.value"
+                                [selected]="format.value === batch.cut_format"
+                              >
+                                {{ format.label }}
+                              </option>
                             }
                           </select>
                           @if (batch.cut_by && !batch.cut_format) {

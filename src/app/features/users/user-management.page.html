@@ -251,7 +251,12 @@
                   (change)="setStatus(user, statusSelect.value)"
                 >
                   @for (status of statuses; track status.value) {
-                    <option [value]="status.value">{{ status.label }}</option>
+                    <option
+                      [value]="status.value"
+                      [selected]="status.value === draftFor(user).status"
+                    >
+                      {{ status.label }}
+                    </option>
                   }
                 </select>
               </label>
@@ -268,7 +273,12 @@
                   (change)="setRole(user, roleSelect.value)"
                 >
                   @for (role of roles; track role.value) {
-                    <option [value]="role.value">{{ role.label }}</option>
+                    <option
+                      [value]="role.value"
+                      [selected]="role.value === draftFor(user).role"
+                    >
+                      {{ role.label }}
+                    </option>
                   }
                 </select>
               </label>

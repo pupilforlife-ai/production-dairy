@@ -16,7 +16,7 @@ describe('production board helpers', () => {
   it('includes cling wrapping as a temporary cutting-stage option', () => {
     expect(CUT_FORMAT_OPTIONS).toContainEqual({
       value: 'cling_wrapped',
-      label: 'Cling wrapped — stored in chiller',
+      label: 'Temporary: cling wrapped in chiller',
     });
   });
 

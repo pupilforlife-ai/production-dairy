@@ -485,7 +485,7 @@
                       <span
                         class="rounded-full bg-amber-950 px-2 py-1 text-xs font-bold text-amber-200"
                       >
-                        Cut status pending
+                        {{ notCutStatusLabel(batch) }}
                       </span>
                       @if (uncutLotForBatch(batch)?.id === fifoRecommendedId()) {
                         <span
@@ -496,7 +496,14 @@
                       }
                     </td>
                     <td class="px-4 py-3 text-right">
-                      @if (uncutLotForBatch(batch); as lot) {
+                      @if (batch.cut_format === 'cling_wrapped') {
+                        <a
+                          class="rounded-lg border border-amber-700 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-950"
+                          routerLink="/production-board"
+                        >
+                          Select final cut
+                        </a>
+                      } @else if (uncutLotForBatch(batch); as lot) {
                         <button
                           class="rounded-lg border border-emerald-700 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-950"
                           type="button"

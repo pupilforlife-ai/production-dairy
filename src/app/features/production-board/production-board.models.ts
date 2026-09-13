@@ -218,7 +218,7 @@ export const CUT_FORMAT_OPTIONS: ReadonlyArray<{
   { value: 'cubes_400g', label: '400 g cubes' },
   { value: 'spp', label: 'SPP' },
   { value: 'restaurant_blocks', label: 'Restaurant blocks' },
-  { value: 'cling_wrapped', label: 'Cling wrapped — stored in chiller' },
+  { value: 'cling_wrapped', label: 'Temporary: cling wrapped in chiller' },
 ];
 
 export interface StageTimer {

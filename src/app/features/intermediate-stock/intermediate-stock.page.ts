@@ -56,7 +56,7 @@ export class IntermediateStockPage implements OnInit {
       (batch) =>
         this.isPaneerBatch(batch) &&
         batch.process_stage === 'ready_for_cutting' &&
-        !batch.cut_format,
+        (!batch.cut_format || this.isClingWrappedBatch(batch)),
     ),
   );
   readonly paneerAlreadyCutBatches = computed(() =>
@@ -70,7 +70,8 @@ export class IntermediateStockPage implements OnInit {
         this.isPaneerLot(lot) &&
         lot.source_transformation_id === null &&
         lot.production_batches?.process_stage === 'ready_for_cutting' &&
-        !lot.production_batches.cut_format,
+        (!lot.production_batches.cut_format ||
+          lot.production_batches.cut_format === 'cling_wrapped'),
     ),
   );
   readonly paneerAlreadyCutLots = computed(() =>
@@ -442,10 +443,16 @@ export class IntermediateStockPage implements OnInit {
       case 'spp':
         return 'SPP';
       case 'cling_wrapped':
-        return 'Cling wrapped';
+        return 'Cling wrapped in chiller';
       default:
         return 'Select cut';
     }
+  }
+
+  notCutStatusLabel(batch: ProductionBatchOption): string {
+    return this.isClingWrappedBatch(batch)
+      ? 'Temporary: cling wrapped in chiller'
+      : 'Cut status pending';
   }
 
   packedSources(row: PackedStockPendingTransfer): string {
@@ -497,6 +504,10 @@ export class IntermediateStockPage implements OnInit {
   private isPaneerBatch(batch: ProductionBatchOption): boolean {
     const code = batch.products?.code ?? '';
     return ['MALAI_PANEER', 'ROZANA_PANEER', 'SPICY_PANEER_POPPERS'].includes(code);
+  }
+
+  private isClingWrappedBatch(batch: ProductionBatchOption): boolean {
+    return batch.cut_format === 'cling_wrapped';
   }
 
   private isCutPaneerFormat(format: string | null | undefined): boolean {

@@ -407,135 +407,324 @@
       </form>
     }
 
-    <section class="mt-7 grid gap-3 sm:grid-cols-3">
+    <section class="mt-7 grid gap-3 sm:grid-cols-4">
       <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Available lots</p>
-        <p class="mt-1 text-2xl font-bold">{{ availableLots().length }}</p>
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Paneer not cut</p>
+        <p class="mt-1 text-2xl font-bold">{{ paneerNotCutBatches().length }}</p>
       </article>
       <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Available weight</p>
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Paneer cut</p>
         <p class="mt-1 text-2xl font-bold text-emerald-300">
-          {{ totalAvailable() | number: '1.0-1' }} kg
+          {{ paneerAlreadyCutBatches().length }}
         </p>
       </article>
       <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">PAN111 available</p>
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Cream recovered</p>
+        <p class="mt-1 text-2xl font-bold text-sky-300">{{ creamRecoveredLots().length }}</p>
+      </article>
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Packed pending</p>
         <p class="mt-1 text-2xl font-bold text-amber-300">
-          {{ pan111Available() | number: '1.0-1' }} kg
+          {{ packedStockPendingTransfer().length }}
         </p>
       </article>
     </section>
 
-    <section class="mt-8">
-      <div class="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 class="text-xl font-bold">Current intermediate stock</h2>
-          <p class="mt-1 text-sm text-slate-400">
-            Oldest available stock is marked as the FIFO recommendation.
-          </p>
-        </div>
-        <div class="grid w-full gap-3 sm:grid-cols-2 md:w-auto">
-          <label>
-            <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Location</span>
-            <select
-              #locationSelect
-              class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
-              (change)="locationFilter.set(locationSelect.value)"
-            >
-              <option value="">All locations</option>
-              @for (location of locations(); track location.id) {
-                <option [value]="location.id">{{ location.name }}</option>
-              }
-            </select>
-          </label>
-          <label>
-            <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Product</span>
-            <select
-              #productSelect
-              class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
-              (change)="productFilter.set(productSelect.value)"
-            >
-              <option value="">All products</option>
-              @for (product of productOptions(); track product.code) {
-                <option [value]="product.code">{{ product.name }}</option>
-              }
-            </select>
-          </label>
-        </div>
-      </div>
-
+    <section class="mt-8 space-y-6">
       @if (loading()) {
-        <p class="mt-5 text-slate-400">Loading intermediate stock…</p>
+        <p class="text-slate-400">Loading intermediate stock…</p>
       } @else {
-        <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          @for (lot of filteredLots(); track lot.id) {
-            <article
-              class="rounded-2xl border bg-slate-900 p-5"
-              [class.border-emerald-600]="lot.id === fifoRecommendedId()"
-              [class.border-slate-800]="lot.id !== fifoRecommendedId()"
-            >
-              <div class="flex items-start justify-between gap-3">
-                <div>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="font-bold">{{ lot.products?.name }}</p>
-                    @if (lot.id === fifoRecommendedId()) {
+        <article class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+          <div class="border-b border-slate-800 px-5 py-4">
+            <h2 class="text-xl font-bold">1. Paneer not cut</h2>
+            <p class="mt-1 text-sm text-slate-400">
+              Ready for cutting, but the cutting status has not been updated yet.
+            </p>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-800 text-sm">
+              <thead class="bg-slate-950/70 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="px-4 py-3 text-left">Round</th>
+                  <th class="px-4 py-3 text-left">Product</th>
+                  <th class="px-4 py-3 text-left">Lot</th>
+                  <th class="px-4 py-3 text-right">Available</th>
+                  <th class="px-4 py-3 text-left">Location</th>
+                  <th class="px-4 py-3 text-left">Status</th>
+                  <th class="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800">
+                @for (batch of paneerNotCutBatches(); track batch.id) {
+                  <tr
+                    [class.bg-emerald-950/20]="uncutLotForBatch(batch)?.id === fifoRecommendedId()"
+                  >
+                    <td class="px-4 py-3">
+                      <p class="font-mono font-bold">{{ batch.batch_code }}</p>
+                      <p class="text-xs text-slate-500">{{ batchTrace(batch) }}</p>
+                    </td>
+                    <td class="px-4 py-3">
+                      <p class="font-bold">{{ batch.products?.name }}</p>
+                      <p class="text-xs text-slate-500">{{ batch.products?.variant }}</p>
+                    </td>
+                    <td class="px-4 py-3 font-mono text-xs text-slate-300">
+                      {{ uncutLotForBatch(batch)?.lot_code || 'Gross output lot pending' }}
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono font-bold text-emerald-300">
+                      {{
+                        uncutLotForBatch(batch)?.current_quantity ||
+                          batch.gross_output_quantity ||
+                          0 | number: '1.0-3'
+                      }}
+                      {{ uncutLotForBatch(batch)?.units_of_measure?.code || 'kg' }}
+                    </td>
+                    <td class="px-4 py-3">
+                      {{ uncutLotForBatch(batch)?.storage_locations?.name || 'Production' }}
+                    </td>
+                    <td class="px-4 py-3">
+                      <span
+                        class="rounded-full bg-amber-950 px-2 py-1 text-xs font-bold text-amber-200"
+                      >
+                        Cut status pending
+                      </span>
+                      @if (uncutLotForBatch(batch)?.id === fifoRecommendedId()) {
+                        <span
+                          class="ml-2 rounded-full bg-emerald-950 px-2 py-1 text-xs font-bold text-emerald-300"
+                        >
+                          FIFO
+                        </span>
+                      }
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                      @if (uncutLotForBatch(batch); as lot) {
+                        <button
+                          class="rounded-lg border border-emerald-700 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-950"
+                          type="button"
+                          (click)="openCuttingFor(lot)"
+                        >
+                          Record cutting
+                        </button>
+                      } @else {
+                        <span class="text-xs text-slate-500">Awaiting gross output</span>
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="px-4 py-8 text-center text-slate-400" colspan="7">
+                      No ready-for-cutting paneer is waiting for cut status.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+          <div class="border-b border-slate-800 px-5 py-4">
+            <h2 class="text-xl font-bold">2. Paneer already cut</h2>
+            <p class="mt-1 text-sm text-slate-400">
+              Cut status updated to 200g, 400g, restaurant blocks, or SPP.
+            </p>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-800 text-sm">
+              <thead class="bg-slate-950/70 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="px-4 py-3 text-left">Round</th>
+                  <th class="px-4 py-3 text-left">Cut</th>
+                  <th class="px-4 py-3 text-left">Output lot</th>
+                  <th class="px-4 py-3 text-right">Available</th>
+                  <th class="px-4 py-3 text-left">Location</th>
+                  <th class="px-4 py-3 text-left">Cut by</th>
+                  <th class="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800">
+                @for (batch of paneerAlreadyCutBatches(); track batch.id) {
+                  <tr>
+                    <td class="px-4 py-3">
+                      <p class="font-mono font-bold">{{ batch.batch_code }}</p>
+                      <p class="text-xs text-slate-500">{{ batchTrace(batch) }}</p>
+                    </td>
+                    <td class="px-4 py-3">
                       <span
                         class="rounded-full bg-emerald-950 px-2 py-1 text-xs font-bold text-emerald-300"
-                        >Use first · FIFO</span
                       >
-                    }
-                  </div>
-                  <p class="mt-1 font-mono text-xs text-slate-400">{{ lot.lot_code }}</p>
-                </div>
-                <span class="rounded-lg bg-slate-800 px-2 py-1 text-xs font-bold">
-                  {{ lot.products?.variant || lot.products?.code }}
-                </span>
-              </div>
-              <div class="mt-5 grid grid-cols-2 gap-3">
-                <div>
-                  <p class="text-xs font-bold uppercase text-slate-500">Balance</p>
-                  <p class="mt-1 font-mono text-xl font-bold text-emerald-300">
-                    {{ lot.current_quantity }} {{ lot.units_of_measure?.code }}
-                  </p>
-                  <p class="text-xs text-slate-500">of {{ lot.produced_quantity }} produced</p>
-                </div>
-                <div>
-                  <p class="text-xs font-bold uppercase text-slate-500">Location</p>
-                  <p class="mt-1 font-bold">{{ lot.storage_locations?.name }}</p>
-                </div>
-              </div>
-              <div class="mt-4 rounded-lg bg-slate-950 px-3 py-2 text-sm">
-                <p>
-                  Milk {{ lot.production_batches?.source_lots?.lot_code }} · Shift
-                  {{ lot.production_batches?.production_shifts?.shift_number }} · Round
-                  {{ lot.production_batches?.round_number }}
-                </p>
-                <p class="mt-1 text-xs text-slate-500">
-                  Produced {{ lot.produced_at | date: 'd MMM y, HH:mm' }}
-                </p>
-              </div>
-              @if (lot.display_label) {
-                <p class="mt-3 text-sm text-slate-300">{{ lot.display_label }}</p>
-              }
-              <button
-                class="mt-4 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold hover:bg-slate-800"
-                type="button"
-                (click)="beginTransfer(lot)"
-              >
-                Transfer stock
-              </button>
-            </article>
-          } @empty {
-            <div
-              class="rounded-2xl border border-dashed border-slate-700 px-5 py-12 text-center md:col-span-2 xl:col-span-3"
-            >
-              <p class="font-bold">No available intermediate stock matches these filters.</p>
-              <p class="mt-2 text-sm text-slate-400">
-                Record gross output on the production board to create the first uncut lot.
+                        {{ cutFormatLabel(batch.cut_format) }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <p class="font-bold">
+                        {{ batch.cutting_allocation || batch.products?.name }}
+                      </p>
+                      <p class="font-mono text-xs text-slate-500">{{ cutLotSummary(batch) }}</p>
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono font-bold text-emerald-300">
+                      {{ batch.gross_output_quantity || 0 | number: '1.0-3' }} kg
+                    </td>
+                    <td class="px-4 py-3">
+                      {{
+                        cutLotsForBatch(batch)[0]?.storage_locations?.name || 'Cut status updated'
+                      }}
+                    </td>
+                    <td class="px-4 py-3">
+                      <p>{{ batch.cut_by || '—' }}</p>
+                      <p class="text-xs text-slate-500">
+                        {{ batch.cut_completed_at | date: 'd MMM, HH:mm' }}
+                      </p>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                      @if (cutLotsForBatch(batch)[0]; as lot) {
+                        <button
+                          class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold hover:bg-slate-800"
+                          type="button"
+                          (click)="beginTransfer(lot)"
+                        >
+                          Transfer
+                        </button>
+                      } @else {
+                        <span class="text-xs text-slate-500">No lot to transfer</span>
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="px-4 py-8 text-center text-slate-400" colspan="7">
+                      No cut paneer lots are available right now.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+          <div class="border-b border-slate-800 px-5 py-4">
+            <h2 class="text-xl font-bold">3. Cream recovered</h2>
+            <p class="mt-1 text-sm text-slate-400">
+              Recovered cream lots created from production rounds.
+            </p>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-800 text-sm">
+              <thead class="bg-slate-950/70 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="px-4 py-3 text-left">Round</th>
+                  <th class="px-4 py-3 text-left">Lot</th>
+                  <th class="px-4 py-3 text-right">Available</th>
+                  <th class="px-4 py-3 text-left">Location</th>
+                  <th class="px-4 py-3 text-left">Recovered at</th>
+                  <th class="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800">
+                @for (lot of creamRecoveredLots(); track lot.id) {
+                  <tr>
+                    <td class="px-4 py-3">
+                      <p class="font-mono font-bold">{{ lot.production_batches?.batch_code }}</p>
+                      <p class="text-xs text-slate-500">{{ lotTrace(lot) }}</p>
+                    </td>
+                    <td class="px-4 py-3">
+                      <p class="font-bold">{{ lot.display_label || lot.products?.name }}</p>
+                      <p class="font-mono text-xs text-slate-500">{{ lot.lot_code }}</p>
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono font-bold text-sky-300">
+                      {{ lot.current_quantity | number: '1.0-3' }} {{ lot.units_of_measure?.code }}
+                    </td>
+                    <td class="px-4 py-3">{{ lot.storage_locations?.name }}</td>
+                    <td class="px-4 py-3">{{ lot.produced_at | date: 'd MMM y, HH:mm' }}</td>
+                    <td class="px-4 py-3 text-right">
+                      <button
+                        class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold hover:bg-slate-800"
+                        type="button"
+                        (click)="beginTransfer(lot)"
+                      >
+                        Transfer
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="px-4 py-8 text-center text-slate-400" colspan="6">
+                      No recovered cream stock is available right now.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+          <div
+            class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-5 py-4"
+          >
+            <div>
+              <h2 class="text-xl font-bold">4. Packed stock not transferred</h2>
+              <p class="mt-1 text-sm text-slate-400">
+                Verified packed stock that has not been sent to distribution yet.
               </p>
             </div>
-          }
-        </div>
+            <a
+              class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold hover:bg-slate-800"
+              routerLink="/packing-verification"
+            >
+              Open packing verification
+            </a>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-800 text-sm">
+              <thead class="bg-slate-950/70 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="px-4 py-3 text-left">SKU</th>
+                  <th class="px-4 py-3 text-right">Cases</th>
+                  <th class="px-4 py-3 text-right">Loose</th>
+                  <th class="px-4 py-3 text-right">Packets</th>
+                  <th class="px-4 py-3 text-left">Source rounds</th>
+                  <th class="px-4 py-3 text-left">Verified at</th>
+                  <th class="px-4 py-3 text-left">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800">
+                @for (row of packedStockPendingTransfer(); track row.id) {
+                  <tr>
+                    <td class="px-4 py-3">
+                      <p class="font-mono font-bold">{{ row.skus?.code }}</p>
+                      <p class="text-xs text-slate-500">{{ row.skus?.description }}</p>
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono">{{ row.corrected_cases }}</td>
+                    <td class="px-4 py-3 text-right font-mono">
+                      {{ row.corrected_loose_packets }}
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono font-bold text-amber-300">
+                      {{ row.verified_packet_quantity }}
+                    </td>
+                    <td class="max-w-md px-4 py-3 text-xs text-slate-300">
+                      {{ packedSources(row) || 'Source rounds pending' }}
+                    </td>
+                    <td class="px-4 py-3">{{ row.verified_at | date: 'd MMM y, HH:mm' }}</td>
+                    <td class="px-4 py-3">
+                      <span
+                        class="rounded-full bg-amber-950 px-2 py-1 text-xs font-bold text-amber-200"
+                      >
+                        Not transferred
+                      </span>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="px-4 py-8 text-center text-slate-400" colspan="7">
+                      No packed stock is waiting for transfer.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
       }
     </section>
 

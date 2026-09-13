@@ -8,6 +8,7 @@ import {
   reconciledCuttingQuantity,
   type CuttingOutputInput,
   type IntermediateLotSummary,
+  type PackedStockPendingTransfer,
   type ProductionBatchOption,
   type StorageLocationOption,
   type TransformationSummary,
@@ -33,6 +34,7 @@ export class IntermediateStockPage implements OnInit {
   readonly locations = signal<StorageLocationOption[]>([]);
   readonly transformations = signal<TransformationSummary[]>([]);
   readonly productionBatches = signal<ProductionBatchOption[]>([]);
+  readonly packedStockPendingTransfer = signal<PackedStockPendingTransfer[]>([]);
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly showCuttingForm = signal(false);
@@ -48,6 +50,39 @@ export class IntermediateStockPage implements OnInit {
   );
   readonly uncutLots = computed(() =>
     this.availableLots().filter((lot) => lot.source_transformation_id === null),
+  );
+  readonly paneerNotCutBatches = computed(() =>
+    this.productionBatches().filter(
+      (batch) =>
+        this.isPaneerBatch(batch) &&
+        batch.process_stage === 'ready_for_cutting' &&
+        !batch.cut_format,
+    ),
+  );
+  readonly paneerAlreadyCutBatches = computed(() =>
+    this.productionBatches().filter(
+      (batch) => this.isPaneerBatch(batch) && this.isCutPaneerFormat(batch.cut_format),
+    ),
+  );
+  readonly paneerNotCutLots = computed(() =>
+    this.availableLots().filter(
+      (lot) =>
+        this.isPaneerLot(lot) &&
+        lot.source_transformation_id === null &&
+        lot.production_batches?.process_stage === 'ready_for_cutting' &&
+        !lot.production_batches.cut_format,
+    ),
+  );
+  readonly paneerAlreadyCutLots = computed(() =>
+    this.availableLots().filter(
+      (lot) =>
+        this.isPaneerLot(lot) &&
+        lot.source_transformation_id !== null &&
+        this.isCutPaneerFormat(lot.production_batches?.cut_format),
+    ),
+  );
+  readonly creamRecoveredLots = computed(() =>
+    this.availableLots().filter((lot) => lot.products?.code === 'RECOVERED_CREAM'),
   );
   readonly filteredLots = computed(() =>
     this.availableLots().filter(
@@ -282,6 +317,7 @@ export class IntermediateStockPage implements OnInit {
       this.locations.set(data.locations);
       this.transformations.set(data.transformations);
       this.productionBatches.set(data.productionBatches);
+      this.packedStockPendingTransfer.set(data.packedStockPendingTransfer);
       const destination = this.preferredDestination();
       if (destination) {
         for (const output of this.cuttingOutputs.controls) {
@@ -370,5 +406,100 @@ export class IntermediateStockPage implements OnInit {
     const date = new Date();
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
     return local.toISOString().slice(0, 16);
+  }
+
+  lotTrace(lot: IntermediateLotSummary): string {
+    const batch = lot.production_batches;
+    const pieces = [
+      batch?.source_lots?.lot_code ? 'Milk ' + batch.source_lots.lot_code : null,
+      batch?.production_shifts?.shift_number
+        ? 'Shift ' + batch.production_shifts.shift_number
+        : null,
+      batch?.round_number ? 'Round ' + batch.round_number : null,
+    ];
+    return pieces.filter(Boolean).join(' · ') || 'Trace pending';
+  }
+
+  batchTrace(batch: ProductionBatchOption): string {
+    const pieces = [
+      batch.source_lots?.lot_code ? 'Milk ' + batch.source_lots.lot_code : null,
+      batch.production_shifts?.shift_number
+        ? 'Shift ' + batch.production_shifts.shift_number
+        : null,
+      batch.round_number ? 'Round ' + batch.round_number : null,
+    ];
+    return pieces.filter(Boolean).join(' · ') || 'Trace pending';
+  }
+
+  cutFormatLabel(format: string | null | undefined): string {
+    switch (format) {
+      case 'cubes_200g':
+        return '200g';
+      case 'cubes_400g':
+        return '400g';
+      case 'restaurant_blocks':
+        return 'Restaurant blocks';
+      case 'spp':
+        return 'SPP';
+      case 'cling_wrapped':
+        return 'Cling wrapped';
+      default:
+        return 'Select cut';
+    }
+  }
+
+  packedSources(row: PackedStockPendingTransfer): string {
+    return row.production_sku_packing_verification_sources
+      .map((source) => {
+        const batch = source.production_batches;
+        if (!batch) return 'Unknown round';
+        const shift = batch.production_shifts?.shift_number
+          ? 'S' + batch.production_shifts.shift_number
+          : 'Shift ?';
+        return `${batch.batch_code} (${shift} R${batch.round_number})`;
+      })
+      .join(', ');
+  }
+
+  openCuttingFor(lot: IntermediateLotSummary): void {
+    this.showRecoveredCreamForm.set(false);
+    this.showCuttingForm.set(true);
+    this.cuttingForm.controls.sourceLotId.setValue(lot.id);
+    this.selectSource(lot.id);
+  }
+
+  uncutLotForBatch(batch: ProductionBatchOption): IntermediateLotSummary | null {
+    return (
+      this.uncutLots().find(
+        (lot) =>
+          lot.source_batch_id === batch.id &&
+          lot.current_quantity > 0 &&
+          lot.products?.code !== 'RECOVERED_CREAM',
+      ) ?? null
+    );
+  }
+
+  cutLotsForBatch(batch: ProductionBatchOption): IntermediateLotSummary[] {
+    return this.paneerAlreadyCutLots().filter((lot) => lot.source_batch_id === batch.id);
+  }
+
+  cutLotSummary(batch: ProductionBatchOption): string {
+    const lots = this.cutLotsForBatch(batch);
+    if (lots.length === 0) return 'No cut output lot yet';
+    return lots.map((lot) => `${lot.lot_code}: ${lot.current_quantity} kg`).join(', ');
+  }
+
+  private isPaneerLot(lot: IntermediateLotSummary): boolean {
+    const code = lot.products?.code ?? '';
+    return ['MALAI_PANEER', 'ROZANA_PANEER', 'PAN111', 'SPICY_PANEER_POPPERS'].includes(code);
+  }
+
+  private isPaneerBatch(batch: ProductionBatchOption): boolean {
+    const code = batch.products?.code ?? '';
+    return ['MALAI_PANEER', 'ROZANA_PANEER', 'SPICY_PANEER_POPPERS'].includes(code);
+  }
+
+  private isCutPaneerFormat(format: string | null | undefined): boolean {
+    return ['cubes_200g', 'cubes_400g', 'restaurant_blocks', 'spp'].includes(format ?? '');
   }
 }

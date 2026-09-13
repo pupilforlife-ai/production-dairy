@@ -3,6 +3,7 @@ import { SupabaseService } from '../../services/supabase.services';
 import type {
   IntermediateLotSummary,
   IntermediateStockData,
+  PackedStockPendingTransfer,
   ProductionBatchOption,
   RecordCuttingInput,
   StorageLocationOption,
@@ -14,39 +15,53 @@ export class IntermediateStockService {
   private readonly supabase = inject(SupabaseService).client;
 
   async load(): Promise<IntermediateStockData> {
-    const [lotsResult, locationsResult, transformationsResult, batchesResult] = await Promise.all([
-      this.supabase
-        .from('intermediate_lots')
-        .select(
-          'id, product_id, source_batch_id, source_transformation_id, parent_intermediate_lot_id, lot_code, display_label, produced_quantity, current_quantity, status, produced_at, products(code, name, variant), units_of_measure(code), storage_locations(id, code, name), production_batches(batch_code, round_number, products(variant), source_lots(lot_code), production_shifts(shift_number))',
-        )
-        .order('produced_at', { ascending: true }),
-      this.supabase
-        .from('storage_locations')
-        .select('id, code, name, location_type')
-        .eq('active', true)
-        .in('code', ['PRODUCTION', 'CHILLER', 'INTERMEDIATE_FREEZER'])
-        .order('name'),
-      this.supabase
-        .from('transformations')
-        .select(
-          'id, occurred_at, performed_by, cut_type, source_quantity, loss_quantity, loss_reason, notes, units_of_measure(code), production_batches(batch_code), transformation_outputs(id, output_kind, output_label, quantity, products(code, name), storage_locations(name))',
-        )
-        .eq('transformation_type', 'cutting')
-        .eq('status', 'completed')
-        .order('occurred_at', { ascending: false })
-        .limit(25),
-      this.supabase
-        .from('production_batches')
-        .select(
-          'id, batch_code, round_number, gross_output_quantity, status, products(name, variant), source_lots(lot_code), production_shifts(shift_number)',
-        )
-        .neq('status', 'cancelled')
-        .order('created_at', { ascending: false })
-        .limit(100),
-    ]);
+    const [lotsResult, locationsResult, transformationsResult, batchesResult, packedPendingResult] =
+      await Promise.all([
+        this.supabase
+          .from('intermediate_lots')
+          .select(
+            'id, product_id, source_batch_id, source_transformation_id, parent_intermediate_lot_id, lot_code, display_label, produced_quantity, current_quantity, status, produced_at, products(code, name, variant), units_of_measure(code), storage_locations(id, code, name), production_batches(batch_code, round_number, process_stage, cut_format, cut_by, cut_completed_at, status, products(variant), source_lots(lot_code), production_shifts(shift_number))',
+          )
+          .order('produced_at', { ascending: true }),
+        this.supabase
+          .from('storage_locations')
+          .select('id, code, name, location_type')
+          .eq('active', true)
+          .in('code', ['PRODUCTION', 'CHILLER', 'INTERMEDIATE_FREEZER'])
+          .order('name'),
+        this.supabase
+          .from('transformations')
+          .select(
+            'id, occurred_at, performed_by, cut_type, source_quantity, loss_quantity, loss_reason, notes, units_of_measure(code), production_batches(batch_code), transformation_outputs(id, output_kind, output_label, quantity, products(code, name), storage_locations(name))',
+          )
+          .eq('transformation_type', 'cutting')
+          .eq('status', 'completed')
+          .order('occurred_at', { ascending: false })
+          .limit(25),
+        this.supabase
+          .from('production_batches')
+          .select(
+            'id, batch_code, round_number, actual_primary_input_quantity, gross_output_quantity, process_stage, process_stage_changed_at, cut_by, cut_format, cut_completed_at, cutting_allocation, status, products(code, name, variant), source_lots(lot_code), production_shifts(shift_number)',
+          )
+          .neq('status', 'cancelled')
+          .order('created_at', { ascending: false })
+          .limit(100),
+        this.supabase
+          .from('production_sku_packing_verifications')
+          .select(
+            'id, sku_id, corrected_cases, corrected_loose_packets, verified_packet_quantity, packets_per_case_used, verified_at, skus(code, description, unit_weight_g), production_sku_packing_verification_sources(production_batch_id, declared_cases, declared_loose_packets, production_batches(batch_code, round_number, production_shifts(shift_number)))',
+          )
+          .eq('status', 'verified')
+          .order('verified_at', { ascending: false }),
+      ]);
 
-    for (const result of [lotsResult, locationsResult, transformationsResult, batchesResult]) {
+    for (const result of [
+      lotsResult,
+      locationsResult,
+      transformationsResult,
+      batchesResult,
+      packedPendingResult,
+    ]) {
       if (result.error) throw result.error;
     }
 
@@ -55,6 +70,8 @@ export class IntermediateStockService {
       locations: locationsResult.data as unknown as StorageLocationOption[],
       transformations: transformationsResult.data as unknown as TransformationSummary[],
       productionBatches: batchesResult.data as unknown as ProductionBatchOption[],
+      packedStockPendingTransfer:
+        packedPendingResult.data as unknown as PackedStockPendingTransfer[],
     };
   }
 

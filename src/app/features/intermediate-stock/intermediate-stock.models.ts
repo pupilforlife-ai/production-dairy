@@ -31,6 +31,11 @@ export interface IntermediateLotSummary {
   production_batches: {
     batch_code: string;
     round_number: number;
+    process_stage: string | null;
+    cut_format: string | null;
+    cut_by: string | null;
+    cut_completed_at: string | null;
+    status: string;
     products: { variant: string | null } | null;
     source_lots: { lot_code: string } | null;
     production_shifts: { shift_number: number } | null;
@@ -62,11 +67,43 @@ export interface ProductionBatchOption {
   id: string;
   batch_code: string;
   round_number: number;
+  actual_primary_input_quantity: number | null;
   gross_output_quantity: number | null;
+  process_stage: string | null;
+  process_stage_changed_at: string | null;
+  cut_by: string | null;
+  cut_format: string | null;
+  cut_completed_at: string | null;
+  cutting_allocation: string | null;
   status: string;
-  products: { name: string; variant: string | null } | null;
+  products: { code: string; name: string; variant: string | null } | null;
   source_lots: { lot_code: string } | null;
   production_shifts: { shift_number: number } | null;
+}
+
+export interface PackedStockPendingTransfer {
+  id: string;
+  sku_id: string;
+  corrected_cases: number;
+  corrected_loose_packets: number;
+  verified_packet_quantity: number;
+  packets_per_case_used: number | null;
+  verified_at: string;
+  skus: {
+    code: string;
+    description: string;
+    unit_weight_g: number | null;
+  } | null;
+  production_sku_packing_verification_sources: Array<{
+    production_batch_id: string;
+    declared_cases: number;
+    declared_loose_packets: number;
+    production_batches: {
+      batch_code: string;
+      round_number: number;
+      production_shifts: { shift_number: number } | null;
+    } | null;
+  }>;
 }
 
 export interface IntermediateStockData {
@@ -74,6 +111,7 @@ export interface IntermediateStockData {
   locations: StorageLocationOption[];
   transformations: TransformationSummary[];
   productionBatches: ProductionBatchOption[];
+  packedStockPendingTransfer: PackedStockPendingTransfer[];
 }
 
 export interface CuttingOutputInput {

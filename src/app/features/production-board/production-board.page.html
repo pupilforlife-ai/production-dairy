@@ -374,7 +374,12 @@
                             (change)="updateRoundCell(batch, 'process_stage', stageSelect.value)"
                           >
                             @for (stage of stages; track stage.value) {
-                              <option [value]="stage.value">{{ stage.label }}</option>
+                              <option
+                                [value]="stage.value"
+                                [selected]="stage.value === batch.process_stage"
+                              >
+                                {{ stage.label }}
+                              </option>
                             }
                           </select>
                           <div class="mt-1 flex flex-wrap items-center gap-1">

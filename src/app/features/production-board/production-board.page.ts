@@ -199,7 +199,7 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
       this.successMessage.set(
         `Shift ${batch.production_shifts?.shift_number}, Round ${batch.round_number} updated.`,
       );
-      if (field === 'type' || field === 'process_stage' || field === 'milk_quantity') {
+      if (field === 'type' || field === 'milk_quantity') {
         await this.load(false);
       }
     } catch (error) {

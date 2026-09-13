@@ -1,0 +1,128 @@
+<app-navigation-rail />
+<main class="ml-16 min-h-screen bg-slate-950 px-4 py-7 text-slate-100 sm:px-6">
+  <div class="mx-auto max-w-7xl">
+    <a class="text-sm font-semibold text-emerald-400 hover:text-emerald-300" routerLink="/"
+      >← Factory workspace</a
+    >
+
+    <header class="mt-5 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+          User traceability
+        </p>
+        <h1 class="mt-2 text-3xl font-bold">Activity log</h1>
+        <p class="mt-2 max-w-3xl text-slate-400">
+          Track who created, edited, or deleted factory records. This view uses the protected audit
+          trail and is available only to owners and admins.
+        </p>
+      </div>
+      <div class="flex flex-wrap items-end gap-3">
+        <label>
+          <span class="mb-1 block text-xs font-bold uppercase text-slate-500">Section</span>
+          <select
+            #entitySelect
+            class="w-60 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+            [value]="entityFilter()"
+            (change)="setEntityFilter(entitySelect.value)"
+          >
+            <option value="all">All sections</option>
+            @for (entity of entityOptions(); track entity.value) {
+              <option [value]="entity.value">{{ entity.label }}</option>
+            }
+          </select>
+        </label>
+        <button
+          class="rounded-xl border border-slate-700 px-4 py-2 font-bold hover:bg-slate-900"
+          type="button"
+          [disabled]="loading()"
+          (click)="load()"
+        >
+          Refresh
+        </button>
+      </div>
+    </header>
+
+    @if (errorMessage()) {
+      <p
+        class="mt-6 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
+        role="alert"
+      >
+        {{ errorMessage() }}
+      </p>
+    }
+
+    <section class="mt-7 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-800 text-sm">
+          <thead class="bg-slate-950/70 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-4 py-3 text-left">When</th>
+              <th class="px-4 py-3 text-left">User</th>
+              <th class="px-4 py-3 text-left">Action</th>
+              <th class="px-4 py-3 text-left">Record</th>
+              <th class="px-4 py-3 text-left">Changed fields</th>
+              <th class="px-4 py-3 text-left">Reason</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            @if (loading()) {
+              <tr>
+                <td class="px-4 py-8 text-center text-slate-400" colspan="6">Loading activity…</td>
+              </tr>
+            } @else {
+              @for (event of filteredEvents(); track event.id) {
+                <tr>
+                  <td class="whitespace-nowrap px-4 py-3">
+                    <p class="font-mono">{{ event.occurred_at | date: 'd MMM y, HH:mm' }}</p>
+                  </td>
+                  <td class="px-4 py-3">
+                    <p class="font-bold">{{ event.actor_display_name }}</p>
+                    <p class="text-xs text-slate-500">{{ event.actor_role || 'role unknown' }}</p>
+                  </td>
+                  <td class="px-4 py-3">
+                    <span
+                      class="rounded-full px-2 py-1 text-xs font-bold"
+                      [class.bg-emerald-950]="event.action === 'insert'"
+                      [class.text-emerald-300]="event.action === 'insert'"
+                      [class.bg-sky-950]="event.action === 'update'"
+                      [class.text-sky-300]="event.action === 'update'"
+                      [class.bg-red-950]="event.action === 'delete'"
+                      [class.text-red-300]="event.action === 'delete'"
+                    >
+                      {{ actionLabel(event.action) }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <p class="font-bold">{{ entityLabel(event.entity_type) }}</p>
+                    <p class="font-mono text-xs text-slate-500">{{ event.entity_label }}</p>
+                  </td>
+                  <td class="max-w-xl px-4 py-3">
+                    <div class="flex flex-wrap gap-2">
+                      @for (change of changeSummary(event); track change) {
+                        <span class="rounded-lg bg-slate-950 px-2 py-1 text-xs text-slate-300">
+                          {{ change }}
+                        </span>
+                      }
+                      @if (hiddenChangeCount(event) > 0) {
+                        <span class="rounded-lg bg-slate-800 px-2 py-1 text-xs text-slate-400">
+                          +{{ hiddenChangeCount(event) }} more
+                        </span>
+                      }
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-slate-300">{{ event.reason || '—' }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="px-4 py-8 text-center text-slate-400" colspan="6">
+                    No activity found for this filter.
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>

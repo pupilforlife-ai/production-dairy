@@ -81,6 +81,12 @@ export const routes: Routes = [
       import('./features/users/user-management.page').then((page) => page.UserManagementPage),
   },
   {
+    path: 'activity-log',
+    canActivate: [authGuard, actualRoleGuard('owner', 'admin')],
+    loadComponent: () =>
+      import('./features/activity-log/activity-log.page').then((page) => page.ActivityLogPage),
+  },
+  {
     path: '',
     pathMatch: 'full',
     canActivate: [authGuard, betaLandingGuard],

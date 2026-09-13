@@ -249,6 +249,29 @@
     @if (auth.hasActualRole('owner', 'admin')) {
       <a
         class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
+        routerLink="/activity-log"
+        routerLinkActive="bg-emerald-950 text-emerald-300"
+        aria-label="Activity log"
+      >
+        <svg
+          class="size-8 shrink-0 p-1"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="M4 5h16M4 12h10M4 19h16"></path>
+          <path d="m17 9 3 3-3 3"></path>
+        </svg>
+        <span
+          class="whitespace-nowrap font-semibold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >Activity log</span
+        >
+      </a>
+
+      <a
+        class="flex h-12 items-center gap-3 rounded-xl px-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100"
         routerLink="/users"
         routerLinkActive="bg-emerald-950 text-emerald-300"
         aria-label="Users"

@@ -243,11 +243,18 @@
                       @let clingEvent = latestClingWrappedEvent(batch.id);
                       @let creamSummaryData = creamSummary(batch.id);
                       @let ingredientSummaryData = ingredientSummary(batch.id);
-                      <tr class="align-middle even:bg-slate-950/25">
+                      <tr
+                        class="align-middle even:bg-slate-950/25"
+                        [class.opacity-60]="batch.status === 'cancelled'"
+                      >
                         <td
                           class="sticky left-0 z-10 border-b border-r border-slate-800 bg-slate-900 px-2 py-2"
                         >
-                          <p class="inline text-lg font-black text-white">
+                          <p
+                            class="inline text-lg font-black"
+                            [class.text-white]="batch.status !== 'cancelled'"
+                            [class.text-red-300]="batch.status === 'cancelled'"
+                          >
                             {{ batch.round_number }}
                           </p>
                           <p class="ml-1 inline font-mono text-[10px] font-bold text-emerald-300">
@@ -260,6 +267,31 @@
                           >
                             {{ historyBatchId() === batch.id ? 'Hide' : 'History' }}
                           </button>
+                          @if (batch.status === 'cancelled') {
+                            <p
+                              class="mt-1 rounded border border-red-800 bg-red-950/60 px-1.5 py-0.5 text-[10px] font-black uppercase text-red-200"
+                            >
+                              Cancelled
+                            </p>
+                          } @else if (auth.hasActualRole('owner', 'admin')) {
+                            <button
+                              class="mt-1 block rounded border border-red-800 px-1.5 py-0.5 text-[10px] font-bold text-red-300 hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-40"
+                              type="button"
+                              [disabled]="
+                                !canCancelAccidentalRound(batch) || cancellingRoundId() !== null
+                              "
+                              [title]="
+                                canCancelAccidentalRound(batch)
+                                  ? 'Cancel this accidental round and exclude its milk from totals'
+                                  : 'Only rounds without output, block weights, cream, or packing can be cancelled here'
+                              "
+                              (click)="cancelAccidentalRound(batch)"
+                            >
+                              {{
+                                cancellingRoundId() === batch.id ? 'Cancelling…' : 'Cancel round'
+                              }}
+                            </button>
+                          }
                         </td>
                         <td class="border-b border-r border-slate-800 px-2 py-2">
                           <div class="relative">

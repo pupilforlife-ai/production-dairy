@@ -2,6 +2,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../core/auth/auth.service';
 import { NavigationRailComponent } from '../../shared/navigation-rail/navigation-rail.component';
 import {
   CUT_FORMAT_OPTIONS,
@@ -36,6 +37,7 @@ import { ProductionBoardService, type EditableRoundField } from './production-bo
 })
 export class ProductionBoardPage implements OnInit, OnDestroy {
   private readonly boardService = inject(ProductionBoardService);
+  readonly auth = inject(AuthService);
   private timerInterval: ReturnType<typeof setInterval> | undefined;
 
   readonly sourceLots = signal<SourceLotOption[]>([]);
@@ -55,6 +57,7 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
   readonly updatingCream = signal<string | null>(null);
   readonly retryingIngredients = signal<string | null>(null);
   readonly addingRoundShiftId = signal<string | null>(null);
+  readonly cancellingRoundId = signal<string | null>(null);
   readonly showShiftForm = signal(false);
   readonly packingBatchId = signal<string | null>(null);
   readonly blockPanelBatchId = signal<string | null>(null);
@@ -157,12 +160,54 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
     }
   }
 
+  async cancelAccidentalRound(batch: ProductionBatchSummary): Promise<void> {
+    if (
+      !this.auth.hasActualRole('owner', 'admin') ||
+      !this.canCancelAccidentalRound(batch) ||
+      this.cancellingRoundId()
+    ) {
+      return;
+    }
+
+    const reason = window.prompt(
+      `Why are you cancelling Shift ${batch.production_shifts?.shift_number ?? ''}, Round ${batch.round_number}?`,
+    );
+    if (reason === null) return;
+    const cleanedReason = reason.trim();
+    if (!cleanedReason) {
+      this.errorMessage.set('Enter a correction reason before cancelling the round.');
+      return;
+    }
+    if (
+      !window.confirm(
+        `Cancel Round ${batch.round_number}? This excludes its milk from source-lot usage totals.`,
+      )
+    ) {
+      return;
+    }
+
+    this.cancellingRoundId.set(batch.id);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    try {
+      await this.boardService.cancelAccidentalRound(batch.id, cleanedReason);
+      this.successMessage.set(`Round ${batch.round_number} was cancelled as a correction.`);
+      await this.load(false);
+    } catch (error) {
+      this.errorMessage.set(this.errorText(error, 'Unable to cancel this production round.'));
+    } finally {
+      this.cancellingRoundId.set(null);
+    }
+  }
+
   async updateRoundCell(
     batch: ProductionBatchSummary,
     field: EditableRoundField,
     value: string | number | null,
   ): Promise<void> {
-    if (batch.locked_at || this.isUnchanged(batch, field, value)) return;
+    if (batch.locked_at || batch.status === 'cancelled' || this.isUnchanged(batch, field, value)) {
+      return;
+    }
     const cellKey = `${batch.id}:${field}`;
     if (this.updatingCell()) return;
     this.updatingCell.set(cellKey);
@@ -438,6 +483,17 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
 
   blocksComplete(batch: ProductionBatchSummary): boolean {
     return this.blockSummary(batch).complete;
+  }
+
+  canCancelAccidentalRound(batch: ProductionBatchSummary): boolean {
+    return (
+      batch.status !== 'cancelled' &&
+      !batch.locked_at &&
+      batch.gross_output_quantity === null &&
+      !this.hasPacking(batch) &&
+      !this.blocksFor(batch.id).some((block) => block.weight_kg !== null) &&
+      !this.hasCream(batch.id)
+    );
   }
 
   toggleBlockPanel(batch: ProductionBatchSummary): void {

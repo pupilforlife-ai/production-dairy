@@ -153,6 +153,14 @@ export class ProductionBoardService {
     if (error) throw error;
   }
 
+  async cancelAccidentalRound(batchId: string, reason: string): Promise<void> {
+    const { error } = await this.supabase.rpc('cancel_accidental_production_round', {
+      requested_batch_id: batchId,
+      requested_reason: reason,
+    });
+    if (error) throw error;
+  }
+
   async updateCell(
     batchId: string,
     field: EditableRoundField,

@@ -8,11 +8,11 @@ import {
   reconciledCuttingQuantity,
   type CuttingOutputInput,
   type IntermediateLotSummary,
-  type PackedStockPendingTransfer,
   type ProductionBatchOption,
   type StorageLocationOption,
   type TransformationSummary,
 } from './intermediate-stock.models';
+import type { SkuPackingVerificationRow } from '../packing-verification/packing-verification.models';
 import { IntermediateStockService } from './intermediate-stock.service';
 
 type OutputKind = CuttingOutputInput['kind'];
@@ -34,7 +34,7 @@ export class IntermediateStockPage implements OnInit {
   readonly locations = signal<StorageLocationOption[]>([]);
   readonly transformations = signal<TransformationSummary[]>([]);
   readonly productionBatches = signal<ProductionBatchOption[]>([]);
-  readonly packedStockPendingTransfer = signal<PackedStockPendingTransfer[]>([]);
+  readonly packedStockToVerify = signal<SkuPackingVerificationRow[]>([]);
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly showCuttingForm = signal(false);
@@ -318,7 +318,7 @@ export class IntermediateStockPage implements OnInit {
       this.locations.set(data.locations);
       this.transformations.set(data.transformations);
       this.productionBatches.set(data.productionBatches);
-      this.packedStockPendingTransfer.set(data.packedStockPendingTransfer);
+      this.packedStockToVerify.set(data.packedStockToVerify);
       const destination = this.preferredDestination();
       if (destination) {
         for (const output of this.cuttingOutputs.controls) {
@@ -450,22 +450,49 @@ export class IntermediateStockPage implements OnInit {
   }
 
   notCutStatusLabel(batch: ProductionBatchOption): string {
-    return this.isClingWrappedBatch(batch)
-      ? 'Temporary: cling wrapped in chiller'
-      : 'Cut status pending';
+    return this.isClingWrappedBatch(batch) ? 'Cling wrapped in chiller' : 'Not cut';
   }
 
-  packedSources(row: PackedStockPendingTransfer): string {
-    return row.production_sku_packing_verification_sources
-      .map((source) => {
-        const batch = source.production_batches;
-        if (!batch) return 'Unknown round';
-        const shift = batch.production_shifts?.shift_number
-          ? 'S' + batch.production_shifts.shift_number
-          : 'Shift ?';
-        return `${batch.batch_code} (${shift} R${batch.round_number})`;
-      })
-      .join(', ');
+  productLabel(product: { name: string; variant: string | null } | null | undefined): string {
+    if (!product) return 'Product pending';
+    if (product.variant && product.name.toLowerCase().includes(product.variant.toLowerCase())) {
+      return product.name;
+    }
+    return product.name;
+  }
+
+  uncutAvailableQuantity(batch: ProductionBatchOption): number | null {
+    const lot = this.uncutLotForBatch(batch);
+    const quantity = Number(lot?.current_quantity ?? batch.gross_output_quantity ?? 0);
+    return quantity > 0 ? quantity : null;
+  }
+
+  uncutAvailableUnit(batch: ProductionBatchOption): string {
+    return this.uncutLotForBatch(batch)?.units_of_measure?.code || 'kg';
+  }
+
+  cutAvailableQuantity(batch: ProductionBatchOption): number | null {
+    const lots = this.cutLotsForBatch(batch);
+    const quantity =
+      lots.length === 0
+        ? Number(batch.gross_output_quantity || 0)
+        : lots.reduce((total, lot) => total + Number(lot.current_quantity), 0);
+    return quantity > 0 ? quantity : null;
+  }
+
+  cutLocationLabel(batch: ProductionBatchOption): string {
+    const locationNames = [
+      ...new Set(
+        this.cutLotsForBatch(batch)
+          .map((lot) => lot.storage_locations?.name)
+          .filter((name): name is string => Boolean(name)),
+      ),
+    ];
+    return locationNames.join(', ') || 'Production';
+  }
+
+  packedStatusLabel(row: SkuPackingVerificationRow): string {
+    return row.needsReverification ? 'Recheck needed' : 'Not verified';
   }
 
   openCuttingFor(lot: IntermediateLotSummary): void {
@@ -488,12 +515,6 @@ export class IntermediateStockPage implements OnInit {
 
   cutLotsForBatch(batch: ProductionBatchOption): IntermediateLotSummary[] {
     return this.paneerAlreadyCutLots().filter((lot) => lot.source_batch_id === batch.id);
-  }
-
-  cutLotSummary(batch: ProductionBatchOption): string {
-    const lots = this.cutLotsForBatch(batch);
-    if (lots.length === 0) return 'No cut output lot yet';
-    return lots.map((lot) => `${lot.lot_code}: ${lot.current_quantity} kg`).join(', ');
   }
 
   private isPaneerLot(lot: IntermediateLotSummary): boolean {

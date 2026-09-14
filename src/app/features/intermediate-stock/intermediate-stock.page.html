@@ -423,9 +423,9 @@
         <p class="mt-1 text-2xl font-bold text-sky-300">{{ creamRecoveredLots().length }}</p>
       </article>
       <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Packed pending</p>
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Packed to verify</p>
         <p class="mt-1 text-2xl font-bold text-amber-300">
-          {{ packedStockPendingTransfer().length }}
+          {{ packedStockToVerify().length }}
         </p>
       </article>
     </section>
@@ -438,7 +438,7 @@
           <div class="border-b border-slate-800 px-5 py-4">
             <h2 class="text-xl font-bold">1. Paneer not cut</h2>
             <p class="mt-1 text-sm text-slate-400">
-              Ready for cutting, but the cutting status has not been updated yet.
+              Paneer on the production floor or in temporary chill storage before final cutting.
             </p>
           </div>
           <div class="overflow-x-auto">
@@ -447,7 +447,6 @@
                 <tr>
                   <th class="px-4 py-3 text-left">Round</th>
                   <th class="px-4 py-3 text-left">Product</th>
-                  <th class="px-4 py-3 text-left">Lot</th>
                   <th class="px-4 py-3 text-right">Available</th>
                   <th class="px-4 py-3 text-left">Location</th>
                   <th class="px-4 py-3 text-left">Status</th>
@@ -464,19 +463,16 @@
                       <p class="font-mono text-xs text-slate-500">{{ batch.batch_code }}</p>
                     </td>
                     <td class="px-4 py-3">
-                      <p class="font-bold">{{ batch.products?.name }}</p>
-                      <p class="text-xs text-slate-500">{{ batch.products?.variant }}</p>
+                      <p class="font-bold">{{ productLabel(batch.products) }}</p>
                     </td>
-                    <td class="px-4 py-3 font-mono text-xs text-slate-300">
-                      {{ uncutLotForBatch(batch)?.lot_code || 'Gross output lot pending' }}
-                    </td>
-                    <td class="px-4 py-3 text-right font-mono font-bold text-emerald-300">
-                      {{
-                        uncutLotForBatch(batch)?.current_quantity ||
-                          batch.gross_output_quantity ||
-                          0 | number: '1.0-3'
-                      }}
-                      {{ uncutLotForBatch(batch)?.units_of_measure?.code || 'kg' }}
+                    <td class="px-4 py-3 text-right">
+                      @if (uncutAvailableQuantity(batch); as quantity) {
+                        <span class="font-mono font-bold text-emerald-300">
+                          {{ quantity | number: '1.0-3' }} {{ uncutAvailableUnit(batch) }}
+                        </span>
+                      } @else {
+                        <span class="text-xs text-slate-500">Not recorded</span>
+                      }
                     </td>
                     <td class="px-4 py-3">
                       {{ uncutLotForBatch(batch)?.storage_locations?.name || 'Production' }}
@@ -512,13 +508,13 @@
                           Record cutting
                         </button>
                       } @else {
-                        <span class="text-xs text-slate-500">Awaiting gross output</span>
+                        <span class="text-xs text-slate-500">Record weight first</span>
                       }
                     </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td class="px-4 py-8 text-center text-slate-400" colspan="7">
+                    <td class="px-4 py-8 text-center text-slate-400" colspan="6">
                       No ready-for-cutting paneer is waiting for cut status.
                     </td>
                   </tr>
@@ -532,7 +528,7 @@
           <div class="border-b border-slate-800 px-5 py-4">
             <h2 class="text-xl font-bold">2. Paneer already cut</h2>
             <p class="mt-1 text-sm text-slate-400">
-              Cut status updated to 200g, 400g, restaurant blocks, or SPP.
+              Paneer with a final cut recorded, ready to transfer when it has a stock location.
             </p>
           </div>
           <div class="overflow-x-auto">
@@ -540,8 +536,8 @@
               <thead class="bg-slate-950/70 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th class="px-4 py-3 text-left">Round</th>
+                  <th class="px-4 py-3 text-left">Product</th>
                   <th class="px-4 py-3 text-left">Cut</th>
-                  <th class="px-4 py-3 text-left">Output lot</th>
                   <th class="px-4 py-3 text-right">Available</th>
                   <th class="px-4 py-3 text-left">Location</th>
                   <th class="px-4 py-3 text-left">Cut by</th>
@@ -556,26 +552,25 @@
                       <p class="font-mono text-xs text-slate-500">{{ batch.batch_code }}</p>
                     </td>
                     <td class="px-4 py-3">
+                      <p class="font-bold">{{ productLabel(batch.products) }}</p>
+                    </td>
+                    <td class="px-4 py-3">
                       <span
                         class="rounded-full bg-emerald-950 px-2 py-1 text-xs font-bold text-emerald-300"
                       >
                         {{ cutFormatLabel(batch.cut_format) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
-                      <p class="font-bold">
-                        {{ batch.cutting_allocation || batch.products?.name }}
-                      </p>
-                      <p class="font-mono text-xs text-slate-500">{{ cutLotSummary(batch) }}</p>
+                    <td class="px-4 py-3 text-right">
+                      @if (cutAvailableQuantity(batch); as quantity) {
+                        <span class="font-mono font-bold text-emerald-300">
+                          {{ quantity | number: '1.0-3' }} kg
+                        </span>
+                      } @else {
+                        <span class="text-xs text-slate-500">Not recorded</span>
+                      }
                     </td>
-                    <td class="px-4 py-3 text-right font-mono font-bold text-emerald-300">
-                      {{ batch.gross_output_quantity || 0 | number: '1.0-3' }} kg
-                    </td>
-                    <td class="px-4 py-3">
-                      {{
-                        cutLotsForBatch(batch)[0]?.storage_locations?.name || 'Cut status updated'
-                      }}
-                    </td>
+                    <td class="px-4 py-3">{{ cutLocationLabel(batch) }}</td>
                     <td class="px-4 py-3">
                       <p>{{ batch.cut_by || '—' }}</p>
                       <p class="text-xs text-slate-500">
@@ -592,7 +587,7 @@
                           Transfer
                         </button>
                       } @else {
-                        <span class="text-xs text-slate-500">No lot to transfer</span>
+                        <span class="text-xs text-slate-500">No stock to move</span>
                       }
                     </td>
                   </tr>
@@ -672,9 +667,9 @@
             class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-5 py-4"
           >
             <div>
-              <h2 class="text-xl font-bold">4. Packed stock not transferred</h2>
+              <h2 class="text-xl font-bold">4. Packed stock not verified</h2>
               <p class="mt-1 text-sm text-slate-400">
-                Verified packed stock that has not been sent to distribution yet.
+                SKUs packed on the production board that still need physical verification.
               </p>
             </div>
             <a
@@ -693,40 +688,45 @@
                   <th class="px-4 py-3 text-right">Loose</th>
                   <th class="px-4 py-3 text-right">Packets</th>
                   <th class="px-4 py-3 text-left">Source rounds</th>
-                  <th class="px-4 py-3 text-left">Verified at</th>
+                  <th class="px-4 py-3 text-left">Last packed</th>
                   <th class="px-4 py-3 text-left">Status</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-800">
-                @for (row of packedStockPendingTransfer(); track row.id) {
+                @for (row of packedStockToVerify(); track row.key) {
                   <tr>
                     <td class="px-4 py-3">
-                      <p class="font-mono font-bold">{{ row.skus?.code }}</p>
-                      <p class="text-xs text-slate-500">{{ row.skus?.description }}</p>
+                      <p class="font-mono font-bold">{{ row.skuCode }}</p>
+                      <p class="text-xs text-slate-500">{{ row.skuDescription }}</p>
                     </td>
-                    <td class="px-4 py-3 text-right font-mono">{{ row.corrected_cases }}</td>
+                    <td class="px-4 py-3 text-right font-mono">{{ row.declaredCases }}</td>
                     <td class="px-4 py-3 text-right font-mono">
-                      {{ row.corrected_loose_packets }}
+                      {{ row.declaredLoosePackets }}
                     </td>
                     <td class="px-4 py-3 text-right font-mono font-bold text-amber-300">
-                      {{ row.verified_packet_quantity }}
+                      {{
+                        row.packetsPerCase === null
+                          ? row.declaredLoosePackets
+                          : row.declaredCases * row.packetsPerCase + row.declaredLoosePackets
+                      }}
                     </td>
                     <td class="max-w-md px-4 py-3 text-xs text-slate-300">
-                      {{ packedSources(row) || 'Source rounds pending' }}
+                      {{ row.contributions.length }}
+                      {{ row.contributions.length === 1 ? 'round' : 'rounds' }}
                     </td>
-                    <td class="px-4 py-3">{{ row.verified_at | date: 'd MMM y, HH:mm' }}</td>
+                    <td class="px-4 py-3">{{ row.lastPackedAt | date: 'd MMM y, HH:mm' }}</td>
                     <td class="px-4 py-3">
                       <span
                         class="rounded-full bg-amber-950 px-2 py-1 text-xs font-bold text-amber-200"
                       >
-                        Not transferred
+                        {{ packedStatusLabel(row) }}
                       </span>
                     </td>
                   </tr>
                 } @empty {
                   <tr>
                     <td class="px-4 py-8 text-center text-slate-400" colspan="7">
-                      No packed stock is waiting for transfer.
+                      No packed SKUs are waiting for verification.
                     </td>
                   </tr>
                 }

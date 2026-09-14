@@ -1,3 +1,5 @@
+import type { SkuPackingVerificationRow } from '../packing-verification/packing-verification.models';
+
 export interface StorageLocationOption {
   id: string;
   code: string;
@@ -81,37 +83,12 @@ export interface ProductionBatchOption {
   production_shifts: { shift_number: number } | null;
 }
 
-export interface PackedStockPendingTransfer {
-  id: string;
-  sku_id: string;
-  corrected_cases: number;
-  corrected_loose_packets: number;
-  verified_packet_quantity: number;
-  packets_per_case_used: number | null;
-  verified_at: string;
-  skus: {
-    code: string;
-    description: string;
-    unit_weight_g: number | null;
-  } | null;
-  production_sku_packing_verification_sources: Array<{
-    production_batch_id: string;
-    declared_cases: number;
-    declared_loose_packets: number;
-    production_batches: {
-      batch_code: string;
-      round_number: number;
-      production_shifts: { shift_number: number } | null;
-    } | null;
-  }>;
-}
-
 export interface IntermediateStockData {
   lots: IntermediateLotSummary[];
   locations: StorageLocationOption[];
   transformations: TransformationSummary[];
   productionBatches: ProductionBatchOption[];
-  packedStockPendingTransfer: PackedStockPendingTransfer[];
+  packedStockToVerify: SkuPackingVerificationRow[];
 }
 
 export interface CuttingOutputInput {

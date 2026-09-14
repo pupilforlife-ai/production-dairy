@@ -3,20 +3,32 @@ import { SupabaseService } from '../../services/supabase.services';
 import type {
   IntermediateLotSummary,
   IntermediateStockData,
-  PackedStockPendingTransfer,
   ProductionBatchOption,
   RecordCuttingInput,
   StorageLocationOption,
   TransformationSummary,
 } from './intermediate-stock.models';
+import { buildPackingVerificationView } from '../packing-verification/packing-verification.models';
+import type {
+  PackedRoundEntry,
+  PackingVerification,
+  PackingVerificationSource,
+} from '../packing-verification/packing-verification.models';
 
 @Injectable({ providedIn: 'root' })
 export class IntermediateStockService {
   private readonly supabase = inject(SupabaseService).client;
 
   async load(): Promise<IntermediateStockData> {
-    const [lotsResult, locationsResult, transformationsResult, batchesResult, packedPendingResult] =
-      await Promise.all([
+    const [
+      lotsResult,
+      locationsResult,
+      transformationsResult,
+      batchesResult,
+      packingEntriesResult,
+      packingVerificationsResult,
+      packingSourcesResult,
+    ] = await Promise.all([
         this.supabase
           .from('intermediate_lots')
           .select(
@@ -47,12 +59,21 @@ export class IntermediateStockService {
           .order('created_at', { ascending: false })
           .limit(100),
         this.supabase
+          .from('production_round_packing_entries')
+          .select(
+            'id, production_batch_id, sku_id, cases, loose_packets, recorded_at, production_batches(batch_code, round_number, products(name, variant), production_shifts(shift_number, shift_members(person_name))), skus(code, description, unit_weight_g, packaging_configs(packets_per_case, nominal_case_weight_kg, variable_case_allowed, effective_from, effective_to))',
+          )
+          .order('recorded_at', { ascending: false }),
+        this.supabase
           .from('production_sku_packing_verifications')
           .select(
-            'id, sku_id, corrected_cases, corrected_loose_packets, verified_packet_quantity, packets_per_case_used, verified_at, skus(code, description, unit_weight_g), production_sku_packing_verification_sources(production_batch_id, declared_cases, declared_loose_packets, production_batches(batch_code, round_number, production_shifts(shift_number)))',
-          )
-          .eq('status', 'verified')
-          .order('verified_at', { ascending: false }),
+            'id, sku_id, declared_cases, declared_loose_packets, corrected_cases, corrected_loose_packets, packets_per_case_used, case_weight_kg_used, verified_packet_quantity, source_round_uncertain, correction_reason, distributed_cases, distributed_loose_packets, distributed_packet_quantity, retained_loose_packets, distribution_exception_reason, status, verified_at, sent_to_distribution_at',
+          ),
+        this.supabase
+          .from('production_sku_packing_verification_sources')
+          .select(
+            'verification_id, packing_entry_id, production_batch_id, declared_cases, declared_loose_packets',
+          ),
       ]);
 
     for (const result of [
@@ -60,18 +81,27 @@ export class IntermediateStockService {
       locationsResult,
       transformationsResult,
       batchesResult,
-      packedPendingResult,
+      packingEntriesResult,
+      packingVerificationsResult,
+      packingSourcesResult,
     ]) {
       if (result.error) throw result.error;
     }
+
+    const packingView = buildPackingVerificationView(
+      packingEntriesResult.data as unknown as PackedRoundEntry[],
+      packingVerificationsResult.data as unknown as PackingVerification[],
+      packingSourcesResult.data as unknown as PackingVerificationSource[],
+    );
 
     return {
       lots: lotsResult.data as unknown as IntermediateLotSummary[],
       locations: locationsResult.data as unknown as StorageLocationOption[],
       transformations: transformationsResult.data as unknown as TransformationSummary[],
       productionBatches: batchesResult.data as unknown as ProductionBatchOption[],
-      packedStockPendingTransfer:
-        packedPendingResult.data as unknown as PackedStockPendingTransfer[],
+      packedStockToVerify: packingView.activeRows.filter(
+        (row) => row.verification === null || row.needsReverification,
+      ),
     };
   }
 

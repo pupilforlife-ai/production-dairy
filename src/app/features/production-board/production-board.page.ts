@@ -6,6 +6,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { NavigationRailComponent } from '../../shared/navigation-rail/navigation-rail.component';
 import {
   CUT_FORMAT_OPTIONS,
+  HALLOUMI_STAGE_OPTIONS,
   PANEER_STAGE_OPTIONS,
   formatRemainingTime,
   getStageTimer,
@@ -55,8 +56,10 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
   readonly updatingCell = signal<string | null>(null);
   readonly updatingBlock = signal<string | null>(null);
   readonly updatingCream = signal<string | null>(null);
+  readonly updatingHalloumiOutput = signal<string | null>(null);
   readonly retryingIngredients = signal<string | null>(null);
   readonly addingRoundShiftId = signal<string | null>(null);
+  readonly addingHalloumiShiftId = signal<string | null>(null);
   readonly cancellingRoundId = signal<string | null>(null);
   readonly showShiftForm = signal(false);
   readonly packingBatchId = signal<string | null>(null);
@@ -70,6 +73,7 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
   readonly now = signal(new Date());
 
   readonly stages = PANEER_STAGE_OPTIONS;
+  readonly halloumiStages = HALLOUMI_STAGE_OPTIONS;
   readonly cutFormats = CUT_FORMAT_OPTIONS;
   readonly stageLabel = paneerStageLabel;
   readonly remainingLabel = formatRemainingTime;
@@ -157,6 +161,27 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
       this.errorMessage.set(this.errorText(error, 'Unable to add a production round.'));
     } finally {
       this.addingRoundShiftId.set(null);
+    }
+  }
+
+  async addHalloumiRound(shift: ShiftSummary): Promise<void> {
+    if (shift.status !== 'open' || this.addingRoundShiftId() || this.addingHalloumiShiftId()) {
+      return;
+    }
+    this.addingHalloumiShiftId.set(shift.id);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    try {
+      await this.boardService.addHalloumiRound(shift.id);
+      await this.load(false);
+      const newest = this.roundsForShift(shift.id).at(-1);
+      this.successMessage.set(
+        `Halloumi round ${newest?.round_number ?? ''} added to Shift ${shift.shift_number}.`,
+      );
+    } catch (error) {
+      this.errorMessage.set(this.errorText(error, 'Unable to add a halloumi round.'));
+    } finally {
+      this.addingHalloumiShiftId.set(null);
     }
   }
 
@@ -406,6 +431,33 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
     }
   }
 
+  async recordHalloumiOutput(batch: ProductionBatchSummary, value: string): Promise<void> {
+    if (batch.locked_at || this.updatingHalloumiOutput()) return;
+    const weight = Number(value);
+    if (!Number.isFinite(weight) || weight <= 0) {
+      this.errorMessage.set('Enter a valid raw halloumi weight in kg.');
+      await this.load(false);
+      return;
+    }
+    if (Number(batch.gross_output_quantity) === weight) return;
+
+    this.updatingHalloumiOutput.set(batch.id);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    try {
+      await this.boardService.recordHalloumiOutput(batch.id, weight);
+      await this.load(false);
+      this.successMessage.set(
+        `Raw halloumi output recorded at ${weight} kg and added to intermediate stock.`,
+      );
+    } catch (error) {
+      this.errorMessage.set(this.errorText(error, 'Unable to record raw halloumi output.'));
+      await this.load(false);
+    } finally {
+      this.updatingHalloumiOutput.set(null);
+    }
+  }
+
   roundsForShift(shiftId: string): ProductionBatchSummary[] {
     return this.batches()
       .filter((batch) => batch.shift_id === shiftId)
@@ -445,6 +497,7 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
   }
 
   ingredientsDue(batch: ProductionBatchSummary): boolean {
+    if (this.isHalloumi(batch)) return false;
     return batch.process_stage !== 'vat_1';
   }
 
@@ -518,6 +571,18 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
 
   timerFor(batch: ProductionBatchSummary) {
     return getStageTimer(batch.process_stage, batch.process_stage_changed_at, this.now());
+  }
+
+  stagesFor(batch: ProductionBatchSummary) {
+    return this.isHalloumi(batch) ? this.halloumiStages : this.stages;
+  }
+
+  isHalloumi(batch: ProductionBatchSummary): boolean {
+    return batch.products?.code === 'RAW_HALLOUMI';
+  }
+
+  halloumiOutputReady(batch: ProductionBatchSummary): boolean {
+    return batch.process_stage === 'halloumi_raw_ready';
   }
 
   batchCode(shift: ShiftSummary): string {

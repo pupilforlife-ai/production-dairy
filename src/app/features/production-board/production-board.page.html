@@ -8,12 +8,13 @@
     <header class="mt-2 flex flex-wrap items-center justify-between gap-3 pr-36">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">
-          Live milk-to-paneer tracking
+          Live milk-to-cheese tracking
         </p>
         <h1 class="mt-0.5 text-2xl font-bold">Production board</h1>
         <p class="mt-1 hidden max-w-3xl text-sm text-slate-400 xl:block">
           Each shift is identified by its shift number, milk-date batch code, and team. Update each
-          round as the milk moves through the factory.
+          round as the milk moves through the factory. Paneer and halloumi can run side by side
+          under the same shift.
         </p>
       </div>
       <button
@@ -198,12 +199,24 @@
                 </span>
                 @if (shift.status === 'open') {
                   <button
+                    class="rounded-lg border border-sky-700 px-3 py-1.5 text-sm font-bold text-sky-200 hover:bg-sky-950 disabled:opacity-50"
+                    type="button"
+                    [disabled]="addingRoundShiftId() !== null || addingHalloumiShiftId() !== null"
+                    (click)="addHalloumiRound(shift)"
+                  >
+                    {{
+                      addingHalloumiShiftId() === shift.id
+                        ? 'Adding…'
+                        : '+ Add halloumi round'
+                    }}
+                  </button>
+                  <button
                     class="rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
                     type="button"
-                    [disabled]="addingRoundShiftId() !== null"
+                    [disabled]="addingRoundShiftId() !== null || addingHalloumiShiftId() !== null"
                     (click)="addRound(shift)"
                   >
-                    {{ addingRoundShiftId() === shift.id ? 'Adding…' : '+ Add round' }}
+                    {{ addingRoundShiftId() === shift.id ? 'Adding…' : '+ Add paneer round' }}
                   </button>
                 }
               </div>
@@ -351,44 +364,54 @@
                           </div>
                         </td>
                         <td class="border-b border-r border-slate-800 px-2 py-2">
-                          <select
-                            #typeSelect
-                            class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm font-black disabled:opacity-50"
-                            [value]="batch.products?.variant"
-                            [disabled]="
-                              !!batch.locked_at ||
-                              !!batch.cut_completed_at ||
-                              batch.cut_format === 'cling_wrapped' ||
-                              hasCream(batch.id) ||
-                              hasIngredientProcessing(batch.id) ||
-                              cellBusy(batch, 'type')
-                            "
-                            [attr.aria-label]="'Paneer type for round ' + batch.round_number"
-                            (change)="updateRoundCell(batch, 'type', typeSelect.value)"
-                          >
-                            <option value="D" [selected]="batch.products?.variant === 'D'">D</option>
-                            <option value="C/S" [selected]="batch.products?.variant === 'C/S'">
-                              C/S
-                            </option>
-                          </select>
-                          @if (batch.products?.variant === 'C/S') {
-                            <button
-                              class="mt-1 w-full rounded border px-1 py-0.5 text-[10px] font-bold"
-                              [class.border-sky-800]="creamSummaryData.count === 0"
-                              [class.text-sky-300]="creamSummaryData.count === 0"
-                              [class.border-amber-800]="creamSummaryData.count > 0"
-                              [class.bg-amber-950]="creamSummaryData.count > 0"
-                              [class.text-amber-200]="creamSummaryData.count > 0"
-                              type="button"
-                              (click)="openCreamPanel(batch)"
+                          @if (isHalloumi(batch)) {
+                            <span
+                              class="block rounded-md border border-sky-800 bg-sky-950 px-2 py-1.5 text-center text-sm font-black text-sky-200"
                             >
-                              @if (creamSummaryData.count) {
-                                Cream {{ creamSummaryData.count }} ·
-                                {{ creamSummaryData.totalWeightKg | number: '1.0-2' }} kg
-                              } @else {
-                                + Cream
-                              }
-                            </button>
+                              Halloumi
+                            </span>
+                          } @else {
+                            <select
+                              #typeSelect
+                              class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm font-black disabled:opacity-50"
+                              [value]="batch.products?.variant"
+                              [disabled]="
+                                !!batch.locked_at ||
+                                !!batch.cut_completed_at ||
+                                batch.cut_format === 'cling_wrapped' ||
+                                hasCream(batch.id) ||
+                                hasIngredientProcessing(batch.id) ||
+                                cellBusy(batch, 'type')
+                              "
+                              [attr.aria-label]="'Paneer type for round ' + batch.round_number"
+                              (change)="updateRoundCell(batch, 'type', typeSelect.value)"
+                            >
+                              <option value="D" [selected]="batch.products?.variant === 'D'">
+                                D
+                              </option>
+                              <option value="C/S" [selected]="batch.products?.variant === 'C/S'">
+                                C/S
+                              </option>
+                            </select>
+                            @if (batch.products?.variant === 'C/S') {
+                              <button
+                                class="mt-1 w-full rounded border px-1 py-0.5 text-[10px] font-bold"
+                                [class.border-sky-800]="creamSummaryData.count === 0"
+                                [class.text-sky-300]="creamSummaryData.count === 0"
+                                [class.border-amber-800]="creamSummaryData.count > 0"
+                                [class.bg-amber-950]="creamSummaryData.count > 0"
+                                [class.text-amber-200]="creamSummaryData.count > 0"
+                                type="button"
+                                (click)="openCreamPanel(batch)"
+                              >
+                                @if (creamSummaryData.count) {
+                                  Cream {{ creamSummaryData.count }} ·
+                                  {{ creamSummaryData.totalWeightKg | number: '1.0-2' }} kg
+                                } @else {
+                                  + Cream
+                                }
+                              </button>
+                            }
                           }
                         </td>
                         <td class="border-b border-r border-slate-800 px-2 py-2">
@@ -407,7 +430,7 @@
                             "
                             (change)="updateRoundCell(batch, 'process_stage', stageSelect.value)"
                           >
-                            @for (stage of stages; track stage.value) {
+                            @for (stage of stagesFor(batch); track stage.value) {
                               <option
                                 [value]="stage.value"
                                 [selected]="stage.value === batch.process_stage"
@@ -467,31 +490,73 @@
                           }
                         </td>
                         <td class="border-b border-r border-slate-800 px-2 py-2">
-                          <input
-                            #blockCountInput
-                            class="w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 font-mono text-sm font-medium text-slate-400 disabled:opacity-50"
-                            type="number"
-                            min="1"
-                            step="1"
-                            [value]="batch.pressed_block_count ?? ''"
-                            [disabled]="
-                              !!batch.locked_at ||
-                              batch.process_stage !== 'ready_for_cutting' ||
-                              !!batch.cut_completed_at ||
-                              hasPacking(batch) ||
-                              updatingBlock() !== null
-                            "
-                            [attr.aria-label]="
-                              'Number of pressed blocks for round ' + batch.round_number
-                            "
-                            (change)="updateBlockCount(batch, blockCountInput.value)"
-                          />
-                          @if (batch.process_stage !== 'ready_for_cutting') {
-                            <p class="mt-1 text-[10px] text-slate-500">After resting</p>
+                          @if (isHalloumi(batch)) {
+                            <div class="relative">
+                              <input
+                                #halloumiOutputInput
+                                class="w-full rounded-md border border-slate-700 bg-slate-950 py-1.5 pl-2 pr-7 font-mono font-black text-sky-200 disabled:opacity-50"
+                                type="number"
+                                min="0.001"
+                                step="0.1"
+                                [value]="batch.gross_output_quantity ?? ''"
+                                [disabled]="
+                                  !!batch.locked_at ||
+                                  !halloumiOutputReady(batch) ||
+                                  updatingHalloumiOutput() !== null
+                                "
+                                [attr.aria-label]="
+                                  'Raw halloumi output weight for round ' + batch.round_number
+                                "
+                                (change)="recordHalloumiOutput(batch, halloumiOutputInput.value)"
+                              />
+                              <span
+                                class="pointer-events-none absolute right-2 top-2 text-[9px] font-bold text-slate-500"
+                                >kg</span
+                              >
+                            </div>
+                            @if (!halloumiOutputReady(batch)) {
+                              <p class="mt-1 text-[10px] text-slate-500">After chiller hold</p>
+                            } @else if (batch.gross_output_quantity) {
+                              <p class="mt-1 text-[10px] font-semibold text-sky-300">
+                                In intermediate stock
+                              </p>
+                            }
+                          } @else {
+                            <input
+                              #blockCountInput
+                              class="w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 font-mono text-sm font-medium text-slate-400 disabled:opacity-50"
+                              type="number"
+                              min="1"
+                              step="1"
+                              [value]="batch.pressed_block_count ?? ''"
+                              [disabled]="
+                                !!batch.locked_at ||
+                                batch.process_stage !== 'ready_for_cutting' ||
+                                !!batch.cut_completed_at ||
+                                hasPacking(batch) ||
+                                updatingBlock() !== null
+                              "
+                              [attr.aria-label]="
+                                'Number of pressed blocks for round ' + batch.round_number
+                              "
+                              (change)="updateBlockCount(batch, blockCountInput.value)"
+                            />
+                            @if (batch.process_stage !== 'ready_for_cutting') {
+                              <p class="mt-1 text-[10px] text-slate-500">After resting</p>
+                            }
                           }
                         </td>
                         <td class="border-b border-r border-slate-800 px-2 py-2">
-                          @if (batch.pressed_block_count) {
+                          @if (isHalloumi(batch)) {
+                            @if (batch.gross_output_quantity) {
+                              <strong class="font-mono text-base font-black text-sky-300">
+                                {{ batch.gross_output_quantity | number: '1.0-2' }} kg
+                              </strong>
+                              <p class="mt-1 text-[10px] text-slate-500">Raw halloumi</p>
+                            } @else {
+                              <p class="text-[10px] text-slate-500">Record raw output</p>
+                            }
+                          } @else if (batch.pressed_block_count) {
                             <button
                               class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-left hover:border-sky-700 disabled:opacity-50"
                               type="button"
@@ -531,73 +596,85 @@
                           }
                         </td>
                         <td class="border-b border-r border-slate-800 px-2 py-2">
-                          <input
-                            #cutByInput
-                            class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 disabled:opacity-50"
-                            [value]="batch.cut_by ?? ''"
-                            [disabled]="
-                              !!batch.locked_at ||
-                              batch.process_stage !== 'ready_for_cutting' ||
-                              !blocksComplete(batch) ||
-                              batch.cut_format === 'cling_wrapped' ||
-                              hasPacking(batch) ||
-                              cellBusy(batch, 'cut_by')
-                            "
-                            [attr.aria-label]="'Cut by for round ' + batch.round_number"
-                            placeholder="Worker name"
-                            (change)="updateRoundCell(batch, 'cut_by', cutByInput.value)"
-                          />
-                          @if (batch.process_stage !== 'ready_for_cutting') {
-                            <p class="mt-1 text-[10px] text-slate-500">Available when ready</p>
-                          } @else if (!blocksComplete(batch)) {
-                            <p class="mt-1 text-[10px] text-slate-500">Weights required</p>
-                          } @else if (batch.cut_format === 'cling_wrapped') {
-                            <p class="mt-1 text-[10px] font-semibold text-amber-300">
-                              Select final cut first
-                            </p>
+                          @if (isHalloumi(batch)) {
+                            <p class="text-[10px] text-slate-500">Not cut on production board</p>
+                          } @else {
+                            <input
+                              #cutByInput
+                              class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 disabled:opacity-50"
+                              [value]="batch.cut_by ?? ''"
+                              [disabled]="
+                                !!batch.locked_at ||
+                                batch.process_stage !== 'ready_for_cutting' ||
+                                !blocksComplete(batch) ||
+                                batch.cut_format === 'cling_wrapped' ||
+                                hasPacking(batch) ||
+                                cellBusy(batch, 'cut_by')
+                              "
+                              [attr.aria-label]="'Cut by for round ' + batch.round_number"
+                              placeholder="Worker name"
+                              (change)="updateRoundCell(batch, 'cut_by', cutByInput.value)"
+                            />
+                            @if (batch.process_stage !== 'ready_for_cutting') {
+                              <p class="mt-1 text-[10px] text-slate-500">Available when ready</p>
+                            } @else if (!blocksComplete(batch)) {
+                              <p class="mt-1 text-[10px] text-slate-500">Weights required</p>
+                            } @else if (batch.cut_format === 'cling_wrapped') {
+                              <p class="mt-1 text-[10px] font-semibold text-amber-300">
+                                Select final cut first
+                              </p>
+                            }
                           }
                         </td>
                         <td class="border-b border-r border-slate-800 px-2 py-2">
-                          <select
-                            #cutFormatSelect
-                            class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 disabled:opacity-50"
-                            [value]="batch.cut_format ?? ''"
-                            [disabled]="
-                              !!batch.locked_at ||
-                              batch.process_stage !== 'ready_for_cutting' ||
-                              !blocksComplete(batch) ||
-                              hasPacking(batch) ||
-                              cellBusy(batch, 'cut_format')
-                            "
-                            [attr.aria-label]="'Cut format for round ' + batch.round_number"
-                            (change)="updateRoundCell(batch, 'cut_format', cutFormatSelect.value)"
-                          >
-                            <option value="" [selected]="!batch.cut_format">Select cut</option>
-                            @for (format of cutFormats; track format.value) {
-                              <option
-                                [value]="format.value"
-                                [selected]="format.value === batch.cut_format"
-                              >
-                                {{ format.label }}
-                              </option>
-                            }
-                          </select>
-                          @if (batch.cut_by && !batch.cut_format) {
-                            <p class="mt-1 text-[10px] font-semibold text-amber-300">Select cut</p>
-                          } @else if (batch.cut_format === 'cling_wrapped' && clingEvent) {
-                            <p
-                              class="mt-1 rounded border border-amber-700 bg-amber-950/70 px-1 py-0.5 text-[10px] font-semibold text-amber-200"
+                          @if (isHalloumi(batch)) {
+                            <p class="text-[10px] text-slate-500">
+                              Vacuum pack or cut later from intermediate stock
+                            </p>
+                          } @else {
+                            <select
+                              #cutFormatSelect
+                              class="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 disabled:opacity-50"
+                              [value]="batch.cut_format ?? ''"
+                              [disabled]="
+                                !!batch.locked_at ||
+                                batch.process_stage !== 'ready_for_cutting' ||
+                                !blocksComplete(batch) ||
+                                hasPacking(batch) ||
+                                cellBusy(batch, 'cut_format')
+                              "
+                              [attr.aria-label]="'Cut format for round ' + batch.round_number"
+                              (change)="updateRoundCell(batch, 'cut_format', cutFormatSelect.value)"
                             >
-                              Stored {{ clingEvent.recorded_at | date: 'd MMM, HH:mm' }}
-                              @if (clingEvent.profiles?.display_name) {
-                                · {{ clingEvent.profiles?.display_name }}
+                              <option value="" [selected]="!batch.cut_format">Select cut</option>
+                              @for (format of cutFormats; track format.value) {
+                                <option
+                                  [value]="format.value"
+                                  [selected]="format.value === batch.cut_format"
+                                >
+                                  {{ format.label }}
+                                </option>
                               }
-                            </p>
-                          } @else if (clingEvent) {
-                            <p class="mt-1 text-[10px] text-slate-500">
-                              Previously cling wrapped
-                              {{ clingEvent.recorded_at | date: 'd MMM, HH:mm' }}
-                            </p>
+                            </select>
+                            @if (batch.cut_by && !batch.cut_format) {
+                              <p class="mt-1 text-[10px] font-semibold text-amber-300">
+                                Select cut
+                              </p>
+                            } @else if (batch.cut_format === 'cling_wrapped' && clingEvent) {
+                              <p
+                                class="mt-1 rounded border border-amber-700 bg-amber-950/70 px-1 py-0.5 text-[10px] font-semibold text-amber-200"
+                              >
+                                Stored {{ clingEvent.recorded_at | date: 'd MMM, HH:mm' }}
+                                @if (clingEvent.profiles?.display_name) {
+                                  · {{ clingEvent.profiles?.display_name }}
+                                }
+                              </p>
+                            } @else if (clingEvent) {
+                              <p class="mt-1 text-[10px] text-slate-500">
+                                Previously cling wrapped
+                                {{ clingEvent.recorded_at | date: 'd MMM, HH:mm' }}
+                              </p>
+                            }
                           }
                         </td>
                         <td class="border-b border-slate-800 px-2 py-2">
@@ -612,7 +689,19 @@
                                 </span>
                               </div>
                             }
-                            @if (batch.cut_format === 'cling_wrapped') {
+                            @if (isHalloumi(batch)) {
+                              @if (batch.gross_output_quantity) {
+                                <p
+                                  class="rounded border border-sky-800 bg-sky-950/50 px-2 py-1 text-[10px] font-semibold text-sky-200"
+                                >
+                                  Raw halloumi in chiller · random-weight pack later
+                                </p>
+                              } @else {
+                                <p class="text-[10px] text-slate-500">
+                                  Final kg creates intermediate stock
+                                </p>
+                              }
+                            } @else if (batch.cut_format === 'cling_wrapped') {
                               <p
                                 class="rounded border border-amber-800 bg-amber-950/50 px-2 py-1 text-[10px] font-semibold text-amber-200"
                               >

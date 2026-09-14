@@ -15,6 +15,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login.page').then((page) => page.LoginPage),
   },
   {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./features/auth/reset-password.page').then((page) => page.ResetPasswordPage),
+  },
+  {
     path: 'master-data',
     canActivate: [authGuard, roleGuard('owner')],
     loadComponent: () =>

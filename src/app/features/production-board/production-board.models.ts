@@ -21,7 +21,20 @@ export type PaneerProcessStage =
   | 'cooling_tank'
   | 'chiller'
   | 'resting'
-  | 'ready_for_cutting';
+  | 'ready_for_cutting'
+  | 'halloumi_milk_received'
+  | 'halloumi_cacl2_added'
+  | 'halloumi_heating_to_34'
+  | 'halloumi_rennet_added'
+  | 'halloumi_curd_set'
+  | 'halloumi_curd_cut'
+  | 'halloumi_heating_to_42'
+  | 'halloumi_pressing'
+  | 'halloumi_whey_heating'
+  | 'halloumi_whey_cooking'
+  | 'halloumi_cooling_salting'
+  | 'halloumi_chiller_hold'
+  | 'halloumi_raw_ready';
 
 export type PaneerCutFormat =
   'cubes_200g' | 'cubes_400g' | 'spp' | 'restaurant_blocks' | 'cling_wrapped';
@@ -210,6 +223,25 @@ export const PANEER_STAGE_OPTIONS: ReadonlyArray<{
   { value: 'ready_for_cutting', label: 'Ready for Cutting' },
 ];
 
+export const HALLOUMI_STAGE_OPTIONS: ReadonlyArray<{
+  value: PaneerProcessStage;
+  label: string;
+}> = [
+  { value: 'halloumi_milk_received', label: 'Milk Received' },
+  { value: 'halloumi_cacl2_added', label: 'CaCl2 Added' },
+  { value: 'halloumi_heating_to_34', label: 'Heating to 34C' },
+  { value: 'halloumi_rennet_added', label: 'Rennet Added' },
+  { value: 'halloumi_curd_set', label: 'Curd Set' },
+  { value: 'halloumi_curd_cut', label: 'Curd Cut' },
+  { value: 'halloumi_heating_to_42', label: 'Heating to 42C' },
+  { value: 'halloumi_pressing', label: 'Pressing' },
+  { value: 'halloumi_whey_heating', label: 'Whey Heating to 90C' },
+  { value: 'halloumi_whey_cooking', label: 'Cooking in Whey' },
+  { value: 'halloumi_cooling_salting', label: 'Cooling and Salting' },
+  { value: 'halloumi_chiller_hold', label: 'Chiller Hold' },
+  { value: 'halloumi_raw_ready', label: 'Raw Halloumi Ready' },
+];
+
 export const CUT_FORMAT_OPTIONS: ReadonlyArray<{
   value: PaneerCutFormat;
   label: string;
@@ -223,13 +255,22 @@ export const CUT_FORMAT_OPTIONS: ReadonlyArray<{
 
 export interface StageTimer {
   ready: boolean;
-  prompt: 'Ready for cooling' | 'Ready to take out' | 'Ready for cutting';
+  prompt:
+    | 'Ready for cooling'
+    | 'Ready to take out'
+    | 'Ready for cutting'
+    | 'Ready to cut curd'
+    | 'Ready for pressing'
+    | 'Ready as raw halloumi';
   remainingMinutes: number;
   deadline: Date;
 }
 
 export function paneerStageLabel(stage: PaneerProcessStage): string {
-  return PANEER_STAGE_OPTIONS.find((option) => option.value === stage)?.label ?? stage;
+  return (
+    [...PANEER_STAGE_OPTIONS, ...HALLOUMI_STAGE_OPTIONS].find((option) => option.value === stage)
+      ?.label ?? stage
+  );
 }
 
 export function receivedDateBatchCode(receivedAt: string): string {
@@ -256,6 +297,12 @@ export function getStageTimer(
         ? 120
         : stage === 'cooling_tank' || stage === 'resting'
           ? 90
+          : stage === 'halloumi_curd_set'
+            ? 30
+            : stage === 'halloumi_heating_to_42'
+              ? 40
+              : stage === 'halloumi_chiller_hold'
+                ? 720
           : null;
   if (durationMinutes === null) return null;
 
@@ -268,6 +315,12 @@ export function getStageTimer(
         ? 'Ready for cooling'
         : stage === 'resting'
           ? 'Ready for cutting'
+          : stage === 'halloumi_curd_set'
+            ? 'Ready to cut curd'
+            : stage === 'halloumi_heating_to_42'
+              ? 'Ready for pressing'
+              : stage === 'halloumi_chiller_hold'
+                ? 'Ready as raw halloumi'
           : 'Ready to take out',
     remainingMinutes,
     deadline,

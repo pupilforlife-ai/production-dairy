@@ -13,7 +13,7 @@ export class LoginPage {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   readonly submitting = signal(false);
-  readonly mode = signal<'signin' | 'signup'>('signin');
+  readonly mode = signal<'signin' | 'signup' | 'forgot'>('signin');
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
   readonly form = new FormGroup({
@@ -30,7 +30,7 @@ export class LoginPage {
   });
 
   async submit(): Promise<void> {
-    if (this.form.invalid || this.submitting()) {
+    if (this.submitting() || !this.isCurrentModeValid()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -61,10 +61,41 @@ export class LoginPage {
     }
   }
 
+  async sendPasswordReset(): Promise<void> {
+    const email = this.form.controls.email.value.trim().toLowerCase();
+    if (this.form.controls.email.invalid || this.submitting()) {
+      this.form.controls.email.markAsTouched();
+      return;
+    }
+
+    this.submitting.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    try {
+      await this.auth.sendPasswordReset(email);
+      this.successMessage.set('Password reset email sent. Open the link in the email to continue.');
+    } catch (error) {
+      this.errorMessage.set(this.friendlyError(error));
+    } finally {
+      this.submitting.set(false);
+    }
+  }
+
   switchMode(): void {
     this.mode.update((mode) => (mode === 'signin' ? 'signup' : 'signin'));
     this.errorMessage.set(null);
     this.successMessage.set(null);
+  }
+
+  showForgotPassword(): void {
+    this.mode.set('forgot');
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+  }
+
+  private isCurrentModeValid(): boolean {
+    if (this.mode() === 'forgot') return this.form.controls.email.valid;
+    return this.form.valid;
   }
 
   private friendlyError(error: unknown): string {

@@ -3,13 +3,21 @@
     <div class="mb-8">
       <p class="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">Vejoy</p>
       <h1 class="text-3xl font-bold">
-        {{ mode() === 'signin' ? 'Welcome back' : 'Create your account' }}
+        {{
+          mode() === 'signin'
+            ? 'Welcome back'
+            : mode() === 'signup'
+              ? 'Create your account'
+              : 'Reset your password'
+        }}
       </h1>
       <p class="mt-2 text-sm text-slate-400">
         {{
           mode() === 'signin'
             ? 'Sign in with your authorised factory account.'
-            : 'Register with your Vejoy email address.'
+            : mode() === 'signup'
+              ? 'Register with your Vejoy email address.'
+              : 'Enter your email address and we will send you a reset link.'
         }}
       </p>
     </div>
@@ -34,15 +42,17 @@
           autocomplete="username"
         />
       </label>
-      <label class="block">
-        <span class="mb-2 block text-sm font-medium">Password</span>
-        <input
-          class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-emerald-500"
-          type="password"
-          formControlName="password"
-          autocomplete="current-password"
-        />
-      </label>
+      @if (mode() !== 'forgot') {
+        <label class="block">
+          <span class="mb-2 block text-sm font-medium">Password</span>
+          <input
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-emerald-500"
+            type="password"
+            formControlName="password"
+            autocomplete="current-password"
+          />
+        </label>
+      }
       @if (mode() === 'signup') {
         <label class="block">
           <span class="mb-2 block text-sm font-medium">Confirm password</span>
@@ -72,21 +82,35 @@
       }
       <button
         class="w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
-        type="submit"
+        [type]="mode() === 'forgot' ? 'button' : 'submit'"
+        (click)="mode() === 'forgot' ? sendPasswordReset() : null"
         [disabled]="submitting()"
       >
         {{
           submitting()
             ? mode() === 'signin'
               ? 'Signing in…'
-              : 'Creating account…'
+              : mode() === 'signup'
+                ? 'Creating account…'
+                : 'Sending reset…'
             : mode() === 'signin'
               ? 'Sign in'
-              : 'Create account'
+              : mode() === 'signup'
+                ? 'Create account'
+                : 'Send reset link'
         }}
       </button>
     </form>
     <div class="mt-6 border-t border-slate-800 pt-5 text-center">
+      @if (mode() === 'signin') {
+        <button
+          class="mb-4 text-sm font-bold text-emerald-400 hover:text-emerald-300"
+          type="button"
+          (click)="showForgotPassword()"
+        >
+          Forgot password?
+        </button>
+      }
       <p class="text-sm text-slate-400">
         {{ mode() === 'signin' ? 'Need an account?' : 'Already registered?' }}
       </p>

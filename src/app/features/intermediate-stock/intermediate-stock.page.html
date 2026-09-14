@@ -460,8 +460,8 @@
                     [class.bg-emerald-950/20]="uncutLotForBatch(batch)?.id === fifoRecommendedId()"
                   >
                     <td class="px-4 py-3">
-                      <p class="font-mono font-bold">{{ batch.batch_code }}</p>
-                      <p class="text-xs text-slate-500">{{ batchTrace(batch) }}</p>
+                      <p class="font-bold">{{ batchTrace(batch) }}</p>
+                      <p class="font-mono text-xs text-slate-500">{{ batch.batch_code }}</p>
                     </td>
                     <td class="px-4 py-3">
                       <p class="font-bold">{{ batch.products?.name }}</p>
@@ -552,8 +552,8 @@
                 @for (batch of paneerAlreadyCutBatches(); track batch.id) {
                   <tr>
                     <td class="px-4 py-3">
-                      <p class="font-mono font-bold">{{ batch.batch_code }}</p>
-                      <p class="text-xs text-slate-500">{{ batchTrace(batch) }}</p>
+                      <p class="font-bold">{{ batchTrace(batch) }}</p>
+                      <p class="font-mono text-xs text-slate-500">{{ batch.batch_code }}</p>
                     </td>
                     <td class="px-4 py-3">
                       <span
@@ -631,8 +631,10 @@
                 @for (lot of creamRecoveredLots(); track lot.id) {
                   <tr>
                     <td class="px-4 py-3">
-                      <p class="font-mono font-bold">{{ lot.production_batches?.batch_code }}</p>
-                      <p class="text-xs text-slate-500">{{ lotTrace(lot) }}</p>
+                      <p class="font-bold">{{ lotTrace(lot) }}</p>
+                      <p class="font-mono text-xs text-slate-500">
+                        {{ lot.production_batches?.batch_code }}
+                      </p>
                     </td>
                     <td class="px-4 py-3">
                       <p class="font-bold">{{ lot.display_label || lot.products?.name }}</p>

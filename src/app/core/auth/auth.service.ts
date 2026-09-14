@@ -81,6 +81,27 @@ export class AuthService {
     return 'confirmation_required';
   }
 
+  async sendPasswordReset(email: string): Promise<void> {
+    const redirectTo =
+      typeof window === 'undefined' ? undefined : `${window.location.origin}/reset-password`;
+    const { error } = await this.supabaseService.client.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+    if (error) throw error;
+  }
+
+  async restorePasswordRecoverySession(code: string | null): Promise<void> {
+    if (!code) return;
+    const { data, error } = await this.supabaseService.client.auth.exchangeCodeForSession(code);
+    if (error) throw error;
+    this.sessionState.set(data.session);
+  }
+
+  async updatePassword(password: string): Promise<void> {
+    const { error } = await this.supabaseService.client.auth.updateUser({ password });
+    if (error) throw error;
+  }
+
   async signOut(): Promise<void> {
     const { error } = await this.supabaseService.client.auth.signOut();
     if (error) throw error;

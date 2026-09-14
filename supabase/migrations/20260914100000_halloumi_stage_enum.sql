@@ -1,0 +1,13 @@
+alter type public.paneer_process_stage add value if not exists 'halloumi_milk_received';
+alter type public.paneer_process_stage add value if not exists 'halloumi_cacl2_added';
+alter type public.paneer_process_stage add value if not exists 'halloumi_heating_to_34';
+alter type public.paneer_process_stage add value if not exists 'halloumi_rennet_added';
+alter type public.paneer_process_stage add value if not exists 'halloumi_curd_set';
+alter type public.paneer_process_stage add value if not exists 'halloumi_curd_cut';
+alter type public.paneer_process_stage add value if not exists 'halloumi_heating_to_42';
+alter type public.paneer_process_stage add value if not exists 'halloumi_pressing';
+alter type public.paneer_process_stage add value if not exists 'halloumi_whey_heating';
+alter type public.paneer_process_stage add value if not exists 'halloumi_whey_cooking';
+alter type public.paneer_process_stage add value if not exists 'halloumi_cooling_salting';
+alter type public.paneer_process_stage add value if not exists 'halloumi_chiller_hold';
+alter type public.paneer_process_stage add value if not exists 'halloumi_raw_ready';

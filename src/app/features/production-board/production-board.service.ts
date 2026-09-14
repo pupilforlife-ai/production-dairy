@@ -45,7 +45,7 @@ export class ProductionBoardService {
       this.supabase
         .from('products')
         .select('id, code, name, variant')
-        .in('code', ['MALAI_PANEER', 'ROZANA_PANEER'])
+        .in('code', ['MALAI_PANEER', 'ROZANA_PANEER', 'RAW_HALLOUMI'])
         .eq('active', true)
         .order('name'),
       this.supabase
@@ -153,6 +153,13 @@ export class ProductionBoardService {
     if (error) throw error;
   }
 
+  async addHalloumiRound(shiftId: string): Promise<void> {
+    const { error } = await this.supabase.rpc('add_halloumi_production_round', {
+      requested_shift_id: shiftId,
+    });
+    if (error) throw error;
+  }
+
   async cancelAccidentalRound(batchId: string, reason: string): Promise<void> {
     const { error } = await this.supabase.rpc('cancel_accidental_production_round', {
       requested_batch_id: batchId,
@@ -232,6 +239,14 @@ export class ProductionBoardService {
   async updateCreamBucketWeight(bucketId: string, weightKg: number): Promise<void> {
     const { error } = await this.supabase.rpc('update_production_round_cream_bucket_weight', {
       requested_bucket_id: bucketId,
+      requested_weight_kg: weightKg,
+    });
+    if (error) throw error;
+  }
+
+  async recordHalloumiOutput(batchId: string, weightKg: number): Promise<void> {
+    const { error } = await this.supabase.rpc('record_halloumi_raw_output', {
+      requested_batch_id: batchId,
       requested_weight_kg: weightKg,
     });
     if (error) throw error;

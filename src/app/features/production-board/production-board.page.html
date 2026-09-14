@@ -204,11 +204,7 @@
                     [disabled]="addingRoundShiftId() !== null || addingHalloumiShiftId() !== null"
                     (click)="addHalloumiRound(shift)"
                   >
-                    {{
-                      addingHalloumiShiftId() === shift.id
-                        ? 'Adding…'
-                        : '+ Add halloumi round'
-                    }}
+                    {{ addingHalloumiShiftId() === shift.id ? 'Adding…' : '+ Add halloumi round' }}
                   </button>
                   <button
                     class="rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
@@ -708,11 +704,53 @@
                                 In chiller · awaiting final cutting
                               </p>
                             } @else if (batch.cut_format === 'spp') {
-                              <p
-                                class="rounded border border-violet-900 bg-violet-950/50 px-2 py-1 text-[10px] font-semibold text-violet-200"
-                              >
-                                Continues to the SPP crumbing process before packing.
-                              </p>
+                              @if (batch.cut_completed_at) {
+                                <p
+                                  class="rounded border border-violet-900 bg-violet-950/50 px-2 py-1 text-[10px] font-semibold text-violet-200"
+                                >
+                                  SPP cut verified · ready for crumbing
+                                </p>
+                              } @else {
+                                <div class="grid min-w-52 grid-cols-[minmax(0,1fr)_auto] gap-1">
+                                  <div class="relative">
+                                    <input
+                                      #sppWeightInput
+                                      class="w-full rounded border border-violet-800 bg-slate-950 py-1 pl-2 pr-7 font-mono text-xs font-black text-violet-100 disabled:opacity-50"
+                                      type="number"
+                                      min="0.001"
+                                      [max]="blockSummaryData.totalWeightKg"
+                                      step="0.01"
+                                      [disabled]="
+                                        !batch.cut_by ||
+                                        !blocksComplete(batch) ||
+                                        verifyingSppCut() !== null
+                                      "
+                                      [attr.aria-label]="
+                                        'Verified SPP weight for round ' + batch.round_number
+                                      "
+                                    />
+                                    <span
+                                      class="pointer-events-none absolute right-2 top-1.5 text-[9px] font-bold text-slate-500"
+                                      >kg</span
+                                    >
+                                  </div>
+                                  <button
+                                    class="rounded border border-violet-700 px-2 py-1 text-xs font-bold text-violet-200 hover:bg-violet-950 disabled:opacity-50"
+                                    type="button"
+                                    [disabled]="
+                                      !batch.cut_by ||
+                                      !blocksComplete(batch) ||
+                                      verifyingSppCut() !== null
+                                    "
+                                    (click)="verifySppCut(batch, sppWeightInput.value)"
+                                  >
+                                    Verify
+                                  </button>
+                                </div>
+                                <p class="mt-1 text-[10px] text-slate-500">
+                                  Balance becomes PAN111
+                                </p>
+                              }
                             } @else if (!batch.cut_completed_at) {
                               <p class="text-[10px] text-slate-500">Cut details required</p>
                             } @else {
@@ -889,6 +927,16 @@
                                       · {{ bucket.profiles?.display_name }}
                                     }
                                   </span>
+                                  @if (auth.hasActualRole('owner', 'admin')) {
+                                    <button
+                                      class="mt-2 w-full rounded border border-red-900 px-2 py-1 text-[10px] font-bold text-red-300 hover:bg-red-950 disabled:opacity-50"
+                                      type="button"
+                                      [disabled]="updatingCream() !== null"
+                                      (click)="voidCreamBucket(bucket)"
+                                    >
+                                      Void duplicate
+                                    </button>
+                                  }
                                 </label>
                               }
 

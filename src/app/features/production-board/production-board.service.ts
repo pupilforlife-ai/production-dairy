@@ -191,6 +191,16 @@ export class ProductionBoardService {
     return data as Partial<ProductionBatchSummary>;
   }
 
+  async verifySppCut(batchId: string, verifiedSppWeightKg: number): Promise<void> {
+    const { error } = await this.supabase.rpc('verify_production_round_spp_cut', {
+      requested_batch_id: batchId,
+      requested_spp_weight_kg: verifiedSppWeightKg,
+      requested_occurred_at: new Date().toISOString(),
+      requested_notes: null,
+    });
+    if (error) throw error;
+  }
+
   async addPackingEntry(
     batchId: string,
     skuId: string,
@@ -240,6 +250,14 @@ export class ProductionBoardService {
     const { error } = await this.supabase.rpc('update_production_round_cream_bucket_weight', {
       requested_bucket_id: bucketId,
       requested_weight_kg: weightKg,
+    });
+    if (error) throw error;
+  }
+
+  async voidCreamBucket(bucketId: string, reason: string): Promise<void> {
+    const { error } = await this.supabase.rpc('void_production_round_cream_bucket', {
+      requested_bucket_id: bucketId,
+      requested_reason: reason,
     });
     if (error) throw error;
   }

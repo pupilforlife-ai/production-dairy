@@ -57,6 +57,7 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
   readonly updatingBlock = signal<string | null>(null);
   readonly updatingCream = signal<string | null>(null);
   readonly updatingHalloumiOutput = signal<string | null>(null);
+  readonly verifyingSppCut = signal<string | null>(null);
   readonly retryingIngredients = signal<string | null>(null);
   readonly addingRoundShiftId = signal<string | null>(null);
   readonly addingHalloumiShiftId = signal<string | null>(null);
@@ -374,6 +375,41 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
     });
   }
 
+  async verifySppCut(batch: ProductionBatchSummary, value: string): Promise<void> {
+    if (batch.locked_at || this.verifyingSppCut()) return;
+    const verifiedWeight = Number(value);
+    const blockTotal = this.blockSummary(batch).totalWeightKg;
+    if (!Number.isFinite(verifiedWeight) || verifiedWeight <= 0) {
+      this.errorMessage.set('Enter the verified SPP weight in kg.');
+      return;
+    }
+    if (verifiedWeight > blockTotal) {
+      this.errorMessage.set('Verified SPP weight cannot exceed the total block weight.');
+      return;
+    }
+    if (!batch.cut_by?.trim()) {
+      this.errorMessage.set('Enter Cut by before verifying SPP weight.');
+      return;
+    }
+
+    this.verifyingSppCut.set(batch.id);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    try {
+      await this.boardService.verifySppCut(batch.id, verifiedWeight);
+      const pan111Weight = blockTotal - verifiedWeight;
+      await this.load(false);
+      this.successMessage.set(
+        `SPP cut verified at ${verifiedWeight} kg. ${pan111Weight.toFixed(2)} kg recorded as PAN111.`,
+      );
+    } catch (error) {
+      this.errorMessage.set(this.errorText(error, 'Unable to verify SPP cut weight.'));
+      await this.load(false);
+    } finally {
+      this.verifyingSppCut.set(null);
+    }
+  }
+
   openCreamPanel(batch: ProductionBatchSummary): void {
     this.creamPanelBatchId.set(this.creamPanelBatchId() === batch.id ? null : batch.id);
     this.creamForm.reset({ weightKg: null });
@@ -425,6 +461,38 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
       this.successMessage.set(`Cream Bucket ${bucket.bucket_number} corrected to ${weight} kg.`);
     } catch (error) {
       this.errorMessage.set(this.errorText(error, 'Unable to correct the cream bucket weight.'));
+      await this.load(false);
+    } finally {
+      this.updatingCream.set(null);
+    }
+  }
+
+  async voidCreamBucket(bucket: ProductionCreamBucket): Promise<void> {
+    if (!this.auth.hasActualRole('owner', 'admin') || this.updatingCream()) return;
+    const reason = window.prompt(`Why are you voiding Cream Bucket ${bucket.bucket_number}?`);
+    if (reason === null) return;
+    const cleanedReason = reason.trim();
+    if (!cleanedReason) {
+      this.errorMessage.set('Enter a correction reason before voiding the cream bucket.');
+      return;
+    }
+    if (
+      !window.confirm(
+        `Void Cream Bucket ${bucket.bucket_number} at ${bucket.weight_kg} kg? This removes its recovered-cream stock record.`,
+      )
+    ) {
+      return;
+    }
+
+    this.updatingCream.set(bucket.id);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    try {
+      await this.boardService.voidCreamBucket(bucket.id, cleanedReason);
+      await this.load(false);
+      this.successMessage.set(`Cream Bucket ${bucket.bucket_number} was voided as a correction.`);
+    } catch (error) {
+      this.errorMessage.set(this.errorText(error, 'Unable to void the cream bucket.'));
       await this.load(false);
     } finally {
       this.updatingCream.set(null);

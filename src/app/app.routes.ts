@@ -41,7 +41,7 @@ export const routes: Routes = [
   },
   {
     path: 'intermediate-stock',
-    canActivate: [authGuard, fullReleaseGuard],
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/intermediate-stock/intermediate-stock.page').then(
         (page) => page.IntermediateStockPage,

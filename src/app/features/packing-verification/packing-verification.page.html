@@ -125,6 +125,12 @@
                         {{ row.verification.distributed_loose_packets }} loose verified ·
                         {{ row.remainingLoosePackets }} loose remaining
                       </p>
+                      @if (row.remainingCases > 0 || row.remainingLoosePackets > 0) {
+                        <p class="mt-1 text-xs font-black uppercase tracking-wide text-sky-300">
+                          Partial transfer: enter only the pending quantity below. This row stays
+                          visible until all pending stock is transferred or rejected.
+                        </p>
+                      }
                     }
                     <p class="mt-1 text-xs text-slate-500">
                       Latest {{ row.lastPackedAt | date: 'd MMM y, HH:mm' }}
@@ -400,7 +406,7 @@
                           } @else if (row.includeLooseInDistribution) {
                             Send cases + loose
                           } @else {
-                            Send full cases only
+                            Send selected pending cases
                           }
                         </button>
                         @if (row.correctedCases === 0 && !row.includeLooseInDistribution) {

@@ -73,7 +73,7 @@ export const routes: Routes = [
   },
   {
     path: 'transformations',
-    canActivate: [authGuard, fullReleaseGuard],
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/transformations/transformation.page').then(
         (page) => page.TransformationPage,

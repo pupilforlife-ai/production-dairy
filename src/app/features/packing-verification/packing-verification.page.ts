@@ -31,6 +31,7 @@ export class PackingVerificationPage implements OnInit {
   readonly pendingConsolidationSkuId = signal<string | null>(null);
   readonly consolidatingSkuId = signal<string | null>(null);
   readonly expandedKeys = signal<Set<string>>(new Set());
+  readonly collapsedRowKeys = signal<Set<string>>(new Set());
   readonly loading = signal(true);
   readonly showUnsentStock = signal(true);
   readonly savingKey = signal<string | null>(null);
@@ -127,6 +128,19 @@ export class PackingVerificationPage implements OnInit {
 
   toggleExpanded(row: SkuPackingVerificationRow): void {
     this.expandedKeys.update((keys) => {
+      const next = new Set(keys);
+      if (next.has(row.key)) next.delete(row.key);
+      else next.add(row.key);
+      return next;
+    });
+  }
+
+  isRowCollapsed(row: SkuPackingVerificationRow): boolean {
+    return this.collapsedRowKeys().has(row.key);
+  }
+
+  toggleRowCollapsed(row: SkuPackingVerificationRow): void {
+    this.collapsedRowKeys.update((keys) => {
       const next = new Set(keys);
       if (next.has(row.key)) next.delete(row.key);
       else next.add(row.key);

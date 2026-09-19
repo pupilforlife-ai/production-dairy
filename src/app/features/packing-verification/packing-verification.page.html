@@ -280,171 +280,195 @@
                   @if (canVerify()) {
                     <td class="min-w-64 px-4 py-4 text-right">
                       <button
-                        class="rounded-lg border border-sky-700 px-3 py-2 text-xs font-bold text-sky-200 hover:bg-sky-950 disabled:opacity-50"
+                        class="mb-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800"
                         type="button"
-                        [disabled]="savingKey() !== null || sendingKey() !== null"
-                        (click)="verify(row)"
+                        (click)="toggleRowCollapsed(row)"
                       >
-                        {{
-                          savingKey() === row.key
-                            ? 'Saving…'
-                            : row.verification
-                              ? 'Recheck SKU'
-                              : 'Verify SKU'
-                        }}
+                        {{ isRowCollapsed(row) ? 'Expand line' : 'Collapse line' }}
                       </button>
-                      @if (
-                        row.verification &&
-                        row.verification.status !== 'rejected' &&
-                        !row.needsReverification
-                      ) {
-                        <div class="mt-3 grid grid-cols-2 gap-2 text-left">
-                          <label>
-                            <span class="mb-1 block text-xs text-slate-500">Cases to transfer</span>
-                            <input
-                              class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2"
-                              type="number"
-                              min="0"
-                              [max]="row.remainingCases"
-                              [value]="
-                                distributionQuantities()[row.key]?.cases ?? row.remainingCases
-                              "
-                              (input)="
-                                updateDistributionQuantity(row, 'cases', $any($event.target).value)
-                              "
-                            />
-                          </label>
-                          <label>
-                            <span class="mb-1 block text-xs text-slate-500">Loose to transfer</span>
-                            <input
-                              class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2"
-                              type="number"
-                              min="0"
-                              [max]="row.remainingLoosePackets"
-                              [value]="
-                                distributionQuantities()[row.key]?.loose ??
-                                row.remainingLoosePackets
-                              "
-                              (input)="
-                                updateDistributionQuantity(row, 'loose', $any($event.target).value)
-                              "
-                            />
-                          </label>
-                        </div>
-                        <div class="mt-3 border-t border-red-900 pt-3 text-left">
-                          <p class="text-xs font-bold text-red-300">Reject pending stock</p>
-                          <div class="mt-2 grid grid-cols-2 gap-2">
-                            <input
-                              class="rounded-lg border border-red-900 bg-slate-950 px-2 py-2"
-                              type="number"
-                              min="0"
-                              [max]="row.remainingCases"
-                              [value]="rejectionQuantities()[row.key]?.cases ?? row.remainingCases"
-                              (input)="updateRejection(row, 'cases', $any($event.target).value)"
-                            />
-                            <input
-                              class="rounded-lg border border-red-900 bg-slate-950 px-2 py-2"
-                              type="number"
-                              min="0"
-                              [max]="row.remainingLoosePackets"
-                              [value]="
-                                rejectionQuantities()[row.key]?.loose ?? row.remainingLoosePackets
-                              "
-                              (input)="updateRejection(row, 'loose', $any($event.target).value)"
-                            />
-                          </div>
-                          <input
-                            class="mt-2 w-full rounded-lg border border-red-900 bg-slate-950 px-2 py-2 text-xs"
-                            maxlength="500"
-                            placeholder="Required rejection reason"
-                            [value]="rejectionQuantities()[row.key]?.reason ?? ''"
-                            (input)="updateRejection(row, 'reason', $any($event.target).value)"
-                          />
-                          <button
-                            class="mt-2 rounded-lg border border-red-700 px-3 py-2 text-xs font-bold text-red-200 hover:bg-red-950 disabled:opacity-50"
-                            type="button"
-                            [disabled]="savingKey() !== null"
-                            (click)="rejectPending(row)"
-                          >
-                            Reject pending quantity
-                          </button>
-                        </div>
-                        @if (row.correctedLoosePackets > 0) {
-                          <label
-                            class="mt-3 flex items-start justify-end gap-2 text-xs text-amber-200"
-                          >
-                            <input
-                              class="mt-0.5 size-4 accent-amber-500"
-                              type="checkbox"
-                              [checked]="row.includeLooseInDistribution"
-                              (change)="
-                                updateDistributionException(row, {
-                                  includeLooseInDistribution: $any($event.target).checked,
-                                })
-                              "
-                            />
-                            Include loose packets by exception
-                          </label>
-                          @if (row.includeLooseInDistribution) {
-                            <input
-                              class="mt-2 w-full rounded-lg border border-amber-800 bg-slate-950 px-2 py-2 text-xs"
-                              type="text"
-                              maxlength="500"
-                              placeholder="Exception reason (required)"
-                              [value]="row.distributionExceptionReason"
-                              (input)="
-                                updateDistributionException(row, {
-                                  distributionExceptionReason: $any($event.target).value,
-                                })
-                              "
-                            />
-                          } @else {
-                            <p class="mt-2 text-xs text-slate-500">
-                              {{ row.correctedLoosePackets }} loose retained in finished production
-                            </p>
-                          }
-                        }
+                      @if (!isRowCollapsed(row)) {
                         <button
-                          class="mt-2 block w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+                          class="rounded-lg border border-sky-700 px-3 py-2 text-xs font-bold text-sky-200 hover:bg-sky-950 disabled:opacity-50"
                           type="button"
-                          [disabled]="
-                            savingKey() !== null ||
-                            sendingKey() !== null ||
-                            (row.correctedCases === 0 && !row.includeLooseInDistribution)
-                          "
-                          (click)="sendToDistribution(row)"
-                        >
-                          @if (sendingKey() === row.key) {
-                            Sending…
-                          } @else if (row.includeLooseInDistribution) {
-                            Send cases + loose
-                          } @else {
-                            Send selected pending cases
-                          }
-                        </button>
-                        @if (row.correctedCases === 0 && !row.includeLooseInDistribution) {
-                          <p class="mt-1 text-xs text-amber-300">No full cases available</p>
-                        }
-                      } @else {
-                        <button
-                          class="mt-2 block w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-black text-slate-950 opacity-40"
-                          type="button"
-                          disabled
+                          [disabled]="savingKey() !== null || sendingKey() !== null"
+                          (click)="verify(row)"
                         >
                           {{
-                            row.needsReverification
-                              ? 'Recheck SKU before distribution'
-                              : 'Verify SKU before distribution'
+                            savingKey() === row.key
+                              ? 'Saving…'
+                              : row.verification
+                                ? 'Recheck SKU'
+                                : 'Verify SKU'
                           }}
                         </button>
-                      }
-                      @if (rowErrorKey() === row.key && rowErrorMessage()) {
-                        <p
-                          class="mt-2 rounded-lg border border-red-800 bg-red-950/70 px-2 py-2 text-left text-xs font-semibold text-red-200"
-                          role="alert"
-                        >
-                          {{ rowErrorMessage() }}
-                        </p>
+                        @if (
+                          row.verification &&
+                          row.verification.status !== 'rejected' &&
+                          !row.needsReverification
+                        ) {
+                          <div class="mt-3 grid grid-cols-2 gap-2 text-left">
+                            <label>
+                              <span class="mb-1 block text-xs text-slate-500"
+                                >Cases to transfer</span
+                              >
+                              <input
+                                class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2"
+                                type="number"
+                                min="0"
+                                [max]="row.remainingCases"
+                                [value]="
+                                  distributionQuantities()[row.key]?.cases ?? row.remainingCases
+                                "
+                                (input)="
+                                  updateDistributionQuantity(
+                                    row,
+                                    'cases',
+                                    $any($event.target).value
+                                  )
+                                "
+                              />
+                            </label>
+                            <label>
+                              <span class="mb-1 block text-xs text-slate-500"
+                                >Loose to transfer</span
+                              >
+                              <input
+                                class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2"
+                                type="number"
+                                min="0"
+                                [max]="row.remainingLoosePackets"
+                                [value]="
+                                  distributionQuantities()[row.key]?.loose ??
+                                  row.remainingLoosePackets
+                                "
+                                (input)="
+                                  updateDistributionQuantity(
+                                    row,
+                                    'loose',
+                                    $any($event.target).value
+                                  )
+                                "
+                              />
+                            </label>
+                          </div>
+                          <div class="mt-3 border-t border-red-900 pt-3 text-left">
+                            <p class="text-xs font-bold text-red-300">Reject pending stock</p>
+                            <div class="mt-2 grid grid-cols-2 gap-2">
+                              <input
+                                class="rounded-lg border border-red-900 bg-slate-950 px-2 py-2"
+                                type="number"
+                                min="0"
+                                [max]="row.remainingCases"
+                                [value]="
+                                  rejectionQuantities()[row.key]?.cases ?? row.remainingCases
+                                "
+                                (input)="updateRejection(row, 'cases', $any($event.target).value)"
+                              />
+                              <input
+                                class="rounded-lg border border-red-900 bg-slate-950 px-2 py-2"
+                                type="number"
+                                min="0"
+                                [max]="row.remainingLoosePackets"
+                                [value]="
+                                  rejectionQuantities()[row.key]?.loose ?? row.remainingLoosePackets
+                                "
+                                (input)="updateRejection(row, 'loose', $any($event.target).value)"
+                              />
+                            </div>
+                            <input
+                              class="mt-2 w-full rounded-lg border border-red-900 bg-slate-950 px-2 py-2 text-xs"
+                              maxlength="500"
+                              placeholder="Required rejection reason"
+                              [value]="rejectionQuantities()[row.key]?.reason ?? ''"
+                              (input)="updateRejection(row, 'reason', $any($event.target).value)"
+                            />
+                            <button
+                              class="mt-2 rounded-lg border border-red-700 px-3 py-2 text-xs font-bold text-red-200 hover:bg-red-950 disabled:opacity-50"
+                              type="button"
+                              [disabled]="savingKey() !== null"
+                              (click)="rejectPending(row)"
+                            >
+                              Reject pending quantity
+                            </button>
+                          </div>
+                          @if (row.correctedLoosePackets > 0) {
+                            <label
+                              class="mt-3 flex items-start justify-end gap-2 text-xs text-amber-200"
+                            >
+                              <input
+                                class="mt-0.5 size-4 accent-amber-500"
+                                type="checkbox"
+                                [checked]="row.includeLooseInDistribution"
+                                (change)="
+                                  updateDistributionException(row, {
+                                    includeLooseInDistribution: $any($event.target).checked,
+                                  })
+                                "
+                              />
+                              Include loose packets by exception
+                            </label>
+                            @if (row.includeLooseInDistribution) {
+                              <input
+                                class="mt-2 w-full rounded-lg border border-amber-800 bg-slate-950 px-2 py-2 text-xs"
+                                type="text"
+                                maxlength="500"
+                                placeholder="Exception reason (required)"
+                                [value]="row.distributionExceptionReason"
+                                (input)="
+                                  updateDistributionException(row, {
+                                    distributionExceptionReason: $any($event.target).value,
+                                  })
+                                "
+                              />
+                            } @else {
+                              <p class="mt-2 text-xs text-slate-500">
+                                {{ row.correctedLoosePackets }} loose retained in finished
+                                production
+                              </p>
+                            }
+                          }
+                          <button
+                            class="mt-2 block w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+                            type="button"
+                            [disabled]="
+                              savingKey() !== null ||
+                              sendingKey() !== null ||
+                              (row.correctedCases === 0 && !row.includeLooseInDistribution)
+                            "
+                            (click)="sendToDistribution(row)"
+                          >
+                            @if (sendingKey() === row.key) {
+                              Sending…
+                            } @else if (row.includeLooseInDistribution) {
+                              Send cases + loose
+                            } @else {
+                              Send selected pending cases
+                            }
+                          </button>
+                          @if (row.correctedCases === 0 && !row.includeLooseInDistribution) {
+                            <p class="mt-1 text-xs text-amber-300">No full cases available</p>
+                          }
+                        } @else {
+                          <button
+                            class="mt-2 block w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-black text-slate-950 opacity-40"
+                            type="button"
+                            disabled
+                          >
+                            {{
+                              row.needsReverification
+                                ? 'Recheck SKU before distribution'
+                                : 'Verify SKU before distribution'
+                            }}
+                          </button>
+                        }
+                        @if (rowErrorKey() === row.key && rowErrorMessage()) {
+                          <p
+                            class="mt-2 rounded-lg border border-red-800 bg-red-950/70 px-2 py-2 text-left text-xs font-semibold text-red-200"
+                            role="alert"
+                          >
+                            {{ rowErrorMessage() }}
+                          </p>
+                        }
                       }
                     </td>
                   }

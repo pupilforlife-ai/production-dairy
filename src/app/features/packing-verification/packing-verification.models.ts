@@ -1,4 +1,4 @@
-export type PackingVerificationStatus = 'verified' | 'sent_to_distribution';
+export type PackingVerificationStatus = 'verified' | 'sent_to_distribution' | 'rejected';
 
 export interface PackedRoundEntry {
   id: string;
@@ -50,6 +50,9 @@ export interface PackingVerification {
   status: PackingVerificationStatus;
   verified_at: string;
   sent_to_distribution_at: string | null;
+  rejected_cases?: number;
+  rejected_loose_packets?: number;
+  rejection_reason?: string | null;
 }
 
 export interface PackingVerificationSource {
@@ -95,6 +98,8 @@ export interface SkuPackingVerificationRow {
   correctionReason: string;
   includeLooseInDistribution: boolean;
   distributionExceptionReason: string;
+  remainingCases: number;
+  remainingLoosePackets: number;
 }
 
 export interface PackingVerificationData {
@@ -164,7 +169,9 @@ export function buildPackingVerificationView(
   );
   const activeVerificationBySku = new Map(
     verifications
-      .filter((verification) => verification.status === 'verified')
+      .filter(
+        (verification) => verification.status === 'verified' || verification.status === 'rejected',
+      )
       .map((verification) => [verification.sku_id, verification]),
   );
   const sourcesByVerification = groupSourcesByVerification(sources);
@@ -286,6 +293,18 @@ function buildRow(
     correctionReason: verification?.correction_reason ?? '',
     includeLooseInDistribution: false,
     distributionExceptionReason: '',
+    remainingCases: Math.max(
+      0,
+      (verification?.corrected_cases ?? declaredCases) -
+        (verification?.distributed_cases ?? 0) -
+        (verification?.rejected_cases ?? 0),
+    ),
+    remainingLoosePackets: Math.max(
+      0,
+      (verification?.corrected_loose_packets ?? declaredLoosePackets) -
+        (verification?.distributed_loose_packets ?? 0) -
+        (verification?.rejected_loose_packets ?? 0),
+    ),
   };
 }
 

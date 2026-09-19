@@ -38,6 +38,10 @@ export class PackingVerificationPage implements OnInit {
   readonly successMessage = signal<string | null>(null);
   readonly rowErrorKey = signal<string | null>(null);
   readonly rowErrorMessage = signal<string | null>(null);
+  readonly distributionQuantities = signal<Record<string, { cases: number; loose: number }>>({});
+  readonly rejectionQuantities = signal<
+    Record<string, { cases: number; loose: number; reason: string }>
+  >({});
   readonly canVerify = computed(() => this.auth.hasRole('owner', 'admin'));
   readonly pendingCount = computed(
     () => this.rows().filter((row) => row.verification === null || row.needsReverification).length,
@@ -180,8 +184,26 @@ export class PackingVerificationPage implements OnInit {
     }
     this.sendingKey.set(row.key);
     try {
+      const requested = this.distributionQuantities()[row.key] ?? {
+        cases: row.remainingCases,
+        loose: row.remainingLoosePackets,
+      };
+      if (
+        requested.cases < 0 ||
+        requested.cases > row.remainingCases ||
+        requested.loose < 0 ||
+        requested.loose > row.remainingLoosePackets
+      ) {
+        this.setRowError(
+          row,
+          'Transfer quantities cannot exceed the pending verification balance.',
+        );
+        return;
+      }
       await this.service.sendToDistribution(
         row.verification.id,
+        requested.cases,
+        requested.loose,
         row.includeLooseInDistribution,
         row.distributionExceptionReason,
       );
@@ -195,6 +217,80 @@ export class PackingVerificationPage implements OnInit {
       this.setRowError(row, this.messageFrom(error));
     } finally {
       this.sendingKey.set(null);
+    }
+  }
+
+  updateDistributionQuantity(
+    row: SkuPackingVerificationRow,
+    field: 'cases' | 'loose',
+    value: string,
+  ): void {
+    const parsed = Number(value);
+    const current = this.distributionQuantities()[row.key] ?? {
+      cases: row.remainingCases,
+      loose: row.remainingLoosePackets,
+    };
+    this.distributionQuantities.update((all) => ({
+      ...all,
+      [row.key]: {
+        ...current,
+        [field]: Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0,
+      },
+    }));
+  }
+
+  updateRejection(
+    row: SkuPackingVerificationRow,
+    field: 'cases' | 'loose' | 'reason',
+    value: string,
+  ): void {
+    const current = this.rejectionQuantities()[row.key] ?? {
+      cases: row.remainingCases,
+      loose: row.remainingLoosePackets,
+      reason: '',
+    };
+    this.rejectionQuantities.update((all) => ({
+      ...all,
+      [row.key]: {
+        ...current,
+        [field]: field === 'reason' ? value : Math.max(0, Math.trunc(Number(value) || 0)),
+      },
+    }));
+  }
+
+  async rejectPending(row: SkuPackingVerificationRow): Promise<void> {
+    if (!row.verification || !this.canVerify()) return;
+    const requested = this.rejectionQuantities()[row.key] ?? {
+      cases: row.remainingCases,
+      loose: row.remainingLoosePackets,
+      reason: '',
+    };
+    if (
+      requested.cases > row.remainingCases ||
+      requested.loose > row.remainingLoosePackets ||
+      requested.cases + requested.loose <= 0 ||
+      requested.reason.trim().length < 5
+    ) {
+      this.setRowError(
+        row,
+        'Enter a pending quantity within the remaining balance and a reason of at least 5 characters.',
+      );
+      return;
+    }
+    this.savingKey.set(row.key);
+    try {
+      await this.service.rejectPending(
+        row.verification.id,
+        requested.cases,
+        requested.loose,
+        requested.reason,
+      );
+      await this.load(false);
+      this.successMessage.set(`${row.skuCode} pending stock rejected and retained for audit.`);
+    } catch (error) {
+      this.setRowError(row, this.messageFrom(error));
+    } finally {
+      this.savingKey.set(null);
     }
   }
 

@@ -116,6 +116,16 @@
                     <p class="font-bold text-slate-100">
                       {{ row.declaredCases }} cases · {{ row.declaredLoosePackets }} loose
                     </p>
+                    @if (row.verification) {
+                      <p class="mt-1 text-xs font-bold text-emerald-300">
+                        {{ row.verification.distributed_cases }} verified ·
+                        {{ row.remainingCases }} remaining
+                      </p>
+                      <p class="text-xs text-amber-300">
+                        {{ row.verification.distributed_loose_packets }} loose verified ·
+                        {{ row.remainingLoosePackets }} loose remaining
+                      </p>
+                    }
                     <p class="mt-1 text-xs text-slate-500">
                       Latest {{ row.lastPackedAt | date: 'd MMM y, HH:mm' }}
                     </p>
@@ -222,8 +232,19 @@
                     } @else if (row.verification) {
                       <span
                         class="inline-flex rounded-full bg-sky-950 px-3 py-1 text-xs font-bold text-sky-300"
-                        >Verified</span
+                        >{{
+                          row.verification.status === 'rejected' ? 'Rejected' : 'Verified'
+                        }}</span
                       >
+                      @if (row.verification.status === 'rejected') {
+                        <p class="mt-2 text-xs font-bold text-red-300">
+                          Rejected: {{ row.verification.rejected_cases ?? 0 }} cases ·
+                          {{ row.verification.rejected_loose_packets ?? 0 }} loose
+                        </p>
+                        <p class="mt-1 text-xs text-red-200">
+                          {{ row.verification.rejection_reason }}
+                        </p>
+                      }
                     } @else {
                       <span
                         class="inline-flex rounded-full bg-amber-950 px-3 py-1 text-xs font-bold text-amber-300"
@@ -253,7 +274,82 @@
                               : 'Verify SKU'
                         }}
                       </button>
-                      @if (row.verification && !row.needsReverification) {
+                      @if (
+                        row.verification &&
+                        row.verification.status !== 'rejected' &&
+                        !row.needsReverification
+                      ) {
+                        <div class="mt-3 grid grid-cols-2 gap-2 text-left">
+                          <label>
+                            <span class="mb-1 block text-xs text-slate-500">Cases to transfer</span>
+                            <input
+                              class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2"
+                              type="number"
+                              min="0"
+                              [max]="row.remainingCases"
+                              [value]="
+                                distributionQuantities()[row.key]?.cases ?? row.remainingCases
+                              "
+                              (input)="
+                                updateDistributionQuantity(row, 'cases', $any($event.target).value)
+                              "
+                            />
+                          </label>
+                          <label>
+                            <span class="mb-1 block text-xs text-slate-500">Loose to transfer</span>
+                            <input
+                              class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2"
+                              type="number"
+                              min="0"
+                              [max]="row.remainingLoosePackets"
+                              [value]="
+                                distributionQuantities()[row.key]?.loose ??
+                                row.remainingLoosePackets
+                              "
+                              (input)="
+                                updateDistributionQuantity(row, 'loose', $any($event.target).value)
+                              "
+                            />
+                          </label>
+                        </div>
+                        <div class="mt-3 border-t border-red-900 pt-3 text-left">
+                          <p class="text-xs font-bold text-red-300">Reject pending stock</p>
+                          <div class="mt-2 grid grid-cols-2 gap-2">
+                            <input
+                              class="rounded-lg border border-red-900 bg-slate-950 px-2 py-2"
+                              type="number"
+                              min="0"
+                              [max]="row.remainingCases"
+                              [value]="rejectionQuantities()[row.key]?.cases ?? row.remainingCases"
+                              (input)="updateRejection(row, 'cases', $any($event.target).value)"
+                            />
+                            <input
+                              class="rounded-lg border border-red-900 bg-slate-950 px-2 py-2"
+                              type="number"
+                              min="0"
+                              [max]="row.remainingLoosePackets"
+                              [value]="
+                                rejectionQuantities()[row.key]?.loose ?? row.remainingLoosePackets
+                              "
+                              (input)="updateRejection(row, 'loose', $any($event.target).value)"
+                            />
+                          </div>
+                          <input
+                            class="mt-2 w-full rounded-lg border border-red-900 bg-slate-950 px-2 py-2 text-xs"
+                            maxlength="500"
+                            placeholder="Required rejection reason"
+                            [value]="rejectionQuantities()[row.key]?.reason ?? ''"
+                            (input)="updateRejection(row, 'reason', $any($event.target).value)"
+                          />
+                          <button
+                            class="mt-2 rounded-lg border border-red-700 px-3 py-2 text-xs font-bold text-red-200 hover:bg-red-950 disabled:opacity-50"
+                            type="button"
+                            [disabled]="savingKey() !== null"
+                            (click)="rejectPending(row)"
+                          >
+                            Reject pending quantity
+                          </button>
+                        </div>
                         @if (row.correctedLoosePackets > 0) {
                           <label
                             class="mt-3 flex items-start justify-end gap-2 text-xs text-amber-200"

@@ -26,7 +26,7 @@ export class PackingVerificationService {
         this.supabase
           .from('production_sku_packing_verifications')
           .select(
-            'id, sku_id, declared_cases, declared_loose_packets, corrected_cases, corrected_loose_packets, packets_per_case_used, case_weight_kg_used, verified_packet_quantity, source_round_uncertain, correction_reason, distributed_cases, distributed_loose_packets, distributed_packet_quantity, retained_loose_packets, distribution_exception_reason, status, verified_at, sent_to_distribution_at',
+            'id, sku_id, declared_cases, declared_loose_packets, corrected_cases, corrected_loose_packets, packets_per_case_used, case_weight_kg_used, verified_packet_quantity, source_round_uncertain, correction_reason, distributed_cases, distributed_loose_packets, distributed_packet_quantity, retained_loose_packets, distribution_exception_reason, rejected_cases, rejected_loose_packets, rejection_reason, status, verified_at, sent_to_distribution_at',
           ),
         this.supabase
           .from('production_sku_packing_verification_sources')
@@ -81,11 +81,15 @@ export class PackingVerificationService {
 
   async sendToDistribution(
     verificationId: string,
+    cases: number,
+    loosePackets: number,
     includeLoosePackets: boolean,
     exceptionReason: string,
   ): Promise<void> {
     const { error } = await this.supabase.rpc('send_verified_sku_packing_to_distribution', {
       requested_verification_id: verificationId,
+      requested_cases: cases,
+      requested_loose_packets: loosePackets,
       requested_include_loose_packets: includeLoosePackets,
       requested_exception_reason: exceptionReason.trim() || null,
     });
@@ -99,6 +103,21 @@ export class PackingVerificationService {
     const { error } = await this.supabase.rpc('send_retained_sku_loose_to_distribution', {
       requested_verification_id: verificationId,
       requested_exception_reason: exceptionReason.trim(),
+    });
+    if (error) throw error;
+  }
+
+  async rejectPending(
+    verificationId: string,
+    cases: number,
+    loosePackets: number,
+    reason: string,
+  ): Promise<void> {
+    const { error } = await this.supabase.rpc('reject_pending_sku_packing', {
+      requested_verification_id: verificationId,
+      requested_cases: cases,
+      requested_loose_packets: loosePackets,
+      requested_reason: reason.trim(),
     });
     if (error) throw error;
   }

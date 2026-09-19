@@ -32,6 +32,7 @@ export class PackingVerificationPage implements OnInit {
   readonly consolidatingSkuId = signal<string | null>(null);
   readonly expandedKeys = signal<Set<string>>(new Set());
   readonly loading = signal(true);
+  readonly showUnsentStock = signal(true);
   readonly savingKey = signal<string | null>(null);
   readonly sendingKey = signal<string | null>(null);
   readonly errorMessage = signal<string | null>(null);
@@ -59,6 +60,10 @@ export class PackingVerificationPage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.load();
+  }
+
+  toggleUnsentStock(): void {
+    this.showUnsentStock.update((visible) => !visible);
   }
 
   updateNumber(

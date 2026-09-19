@@ -64,6 +64,7 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
   readonly cancellingRoundId = signal<string | null>(null);
   readonly showShiftForm = signal(false);
   readonly packingBatchId = signal<string | null>(null);
+  readonly correctingPackingEntryId = signal<string | null>(null);
   readonly blockPanelBatchId = signal<string | null>(null);
   readonly creamPanelBatchId = signal<string | null>(null);
   readonly ingredientPanelBatchId = signal<string | null>(null);
@@ -94,6 +95,22 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
     skuId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     cases: new FormControl(0, { nonNullable: true, validators: [Validators.min(0)] }),
     loosePackets: new FormControl(0, { nonNullable: true, validators: [Validators.min(0)] }),
+  });
+
+  readonly packingCorrectionForm = new FormGroup({
+    skuId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    cases: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
+    loosePackets: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
+    reason: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.minLength(5)],
+    }),
   });
 
   readonly creamForm = new FormGroup({
@@ -372,6 +389,60 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
       );
       this.packingBatchId.set(null);
       await this.load(false);
+    });
+  }
+
+  togglePackingCorrection(entry: RoundPackingEntry): void {
+    if (!this.auth.hasActualRole('owner', 'admin')) return;
+    if (this.correctingPackingEntryId() === entry.id) {
+      this.correctingPackingEntryId.set(null);
+      return;
+    }
+    this.packingCorrectionForm.reset({
+      skuId: entry.sku_id,
+      cases: entry.cases,
+      loosePackets: entry.loose_packets,
+      reason: '',
+    });
+    this.correctingPackingEntryId.set(entry.id);
+  }
+
+  async savePackingCorrection(entry: RoundPackingEntry): Promise<void> {
+    if (!this.auth.hasActualRole('owner', 'admin') || this.saving()) return;
+    if (this.packingCorrectionForm.invalid) {
+      this.packingCorrectionForm.markAllAsTouched();
+      return;
+    }
+    const values = this.packingCorrectionForm.getRawValue();
+    if (
+      !Number.isInteger(values.cases) ||
+      !Number.isInteger(values.loosePackets) ||
+      values.cases + values.loosePackets <= 0
+    ) {
+      this.errorMessage.set('Enter at least one case or loose packet using whole numbers.');
+      return;
+    }
+    if (
+      values.skuId === entry.sku_id &&
+      values.cases === entry.cases &&
+      values.loosePackets === entry.loose_packets
+    ) {
+      this.errorMessage.set('Change the SKU or packing quantities before saving.');
+      return;
+    }
+    await this.runSave(async () => {
+      await this.boardService.correctPackingEntry(
+        entry.id,
+        values.skuId,
+        values.cases,
+        values.loosePackets,
+        values.reason.trim(),
+      );
+      this.correctingPackingEntryId.set(null);
+      await this.load(false);
+      this.successMessage.set(
+        'Packing entry corrected. The original values and reason were recorded.',
+      );
     });
   }
 

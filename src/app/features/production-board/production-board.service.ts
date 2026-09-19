@@ -216,6 +216,23 @@ export class ProductionBoardService {
     if (error) throw error;
   }
 
+  async correctPackingEntry(
+    entryId: string,
+    skuId: string,
+    cases: number,
+    loosePackets: number,
+    reason: string,
+  ): Promise<void> {
+    const { error } = await this.supabase.rpc('correct_production_round_packing_entry', {
+      requested_entry_id: entryId,
+      requested_sku_id: skuId,
+      requested_cases: cases,
+      requested_loose_packets: loosePackets,
+      requested_reason: reason,
+    });
+    if (error) throw error;
+  }
+
   async setBlockCount(batchId: string, blockCount: number): Promise<void> {
     const { error } = await this.supabase.rpc('set_production_round_block_count', {
       requested_batch_id: batchId,

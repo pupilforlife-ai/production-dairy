@@ -2,6 +2,95 @@
 
 @import 'tailwindcss';
 
+.production-stage-action {
+  border-color: #047857;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.production-stage-action:hover {
+  background: #d1fae5;
+}
+
+html[data-theme='light'] .production-stage-action {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #ffffff;
+}
+
+html[data-theme='light'] .production-stage-action:hover {
+  background: #115e59;
+}
+
+html[data-theme='qwen'] .production-stage-action {
+  border-color: #c2410c;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+html[data-theme='qwen'] .production-stage-action:hover {
+  background: #ffedd5;
+}
+
+html[data-theme='qwen'] .production-round-row {
+  background: #fffdf8;
+}
+
+html[data-theme='qwen'] .production-round-row:nth-child(even) {
+  background: #fff7ed;
+}
+
+html[data-theme='qwen'] .production-round-row > td {
+  background: #fffdf8 !important;
+}
+
+html[data-theme='qwen'] .production-round-row:nth-child(even) > td {
+  background: #fff7ed !important;
+}
+
+html[data-theme='qwen'] .production-shift-header {
+  background: #dff5f2;
+  border-color: #a7dcd6;
+}
+
+html[data-theme='qwen'] .production-shift-header :where(.text-white, .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400, .text-emerald-300, .text-emerald-400, .text-amber-300, .text-sky-200, .text-sky-300) {
+  color: #155e75;
+}
+
+html[data-theme='qwen'] .production-round-row :where(.text-white, .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400) {
+  color: #334155;
+}
+
+html[data-theme='qwen'] .production-round-row :where(.text-emerald-200, .text-emerald-300, .text-emerald-400) {
+  color: #047857;
+}
+
+html[data-theme='qwen'] .production-round-row :where(.text-amber-200, .text-amber-300, .text-amber-400) {
+  color: #92400e;
+}
+
+html[data-theme='qwen'] .production-round-row :where(.text-sky-200, .text-sky-300, .text-sky-400) {
+  color: #0369a1;
+}
+
+html[data-theme='qwen'] .production-round-row :where(.text-red-200, .text-red-300, .text-red-400) {
+  color: #b91c1c;
+}
+
+html[data-theme='qwen'] .production-label-white {
+  color: #ffffff !important;
+}
+
+html[data-theme='high-contrast'] .production-stage-action {
+  border-color: #facc15;
+  background: #facc15;
+  color: #000000;
+}
+
+html[data-theme='high-contrast'] .production-stage-action:hover {
+  background: #fde047;
+}
+
 html,
 body {
   background: #020617;
@@ -10,6 +99,115 @@ body {
 html[data-theme='light'],
 html[data-theme='light'] body {
   background: #f8fafc;
+}
+
+html[data-theme='qwen'],
+html[data-theme='qwen'] body {
+  background: #f5f7fb;
+  color: #172033;
+}
+
+html[data-theme='qwen'] .app-navigation-rail {
+  background: #101a2f;
+  border-color: #253452;
+}
+
+html[data-theme='qwen'] :where(.bg-slate-950, .bg-slate-900) {
+  background-color: #ffffff;
+}
+
+html[data-theme='qwen'] :where(.text-slate-100, .text-slate-200, .text-slate-300) {
+  color: #172033;
+}
+
+html[data-theme='qwen'] :where(.text-slate-400, .text-slate-500) {
+  color: #64748b;
+}
+
+html[data-theme='qwen'] :where(.border-slate-800, .border-slate-700) {
+  border-color: #dbe3ef;
+}
+
+html[data-theme='qwen'] .dashboard-page {
+  background: #f5f7fb;
+  color: #172033;
+}
+
+html[data-theme='qwen'] .dashboard-page > header {
+  background: #ffffff;
+  border-color: #dbe3ef;
+}
+
+html[data-theme='qwen'] .dashboard-page section[aria-label='Factory summary'] article {
+  min-height: 132px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgb(30 41 59 / 0.06);
+}
+
+html[data-theme='qwen'] .dashboard-page section[aria-label='Factory summary'] article:nth-child(1) {
+  background: #eef6ff;
+  border-color: #c8dcf5;
+}
+
+html[data-theme='qwen'] .dashboard-page section[aria-label='Factory summary'] article:nth-child(2) {
+  background: #effbf6;
+  border-color: #c8eadb;
+}
+
+html[data-theme='qwen'] .dashboard-page section[aria-label='Factory summary'] article:nth-child(3) {
+  background: #f3f0ff;
+  border-color: #ddd3f5;
+}
+
+html[data-theme='qwen'] .dashboard-page section[aria-label='Packed output by product'],
+html[data-theme='qwen'] .dashboard-page section.mt-4.grid {
+  border-color: #dbe3ef;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgb(30 41 59 / 0.05);
+}
+
+html[data-theme='qwen'] .dashboard-page section.mt-4.grid > article {
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgb(30 41 59 / 0.06);
+}
+
+html[data-theme='qwen'] .dashboard-page section.mt-4.grid > article:nth-child(1) { background: #fff2f2; border-color: #ffcaca; }
+html[data-theme='qwen'] .dashboard-page section.mt-4.grid > article:nth-child(2) { background: #f4efff; border-color: #dfceff; }
+html[data-theme='qwen'] .dashboard-page section.mt-4.grid > article:nth-child(3) { background: #fff9e8; border-color: #f7dc8a; }
+html[data-theme='qwen'] .dashboard-page section.mt-4.grid > article:nth-child(4) { background: #effbf6; border-color: #bfead7; }
+
+html[data-theme='qwen'] .dashboard-page article {
+  border-color: #dbe3ef;
+  box-shadow: 0 2px 8px rgb(30 41 59 / 0.05);
+}
+
+html[data-theme='qwen'] .dashboard-page article :where(.text-blue-100, .text-blue-300) { color: #2459c4; }
+html[data-theme='qwen'] .dashboard-page article :where(.text-emerald-100, .text-emerald-300) { color: #16805d; }
+html[data-theme='qwen'] .dashboard-page article :where(.text-violet-100, .text-violet-300) { color: #5530b5; }
+html[data-theme='qwen'] .dashboard-page article :where(.text-amber-100, .text-amber-300) { color: #a86100; }
+
+html[data-theme='qwen'] .dashboard-page section[aria-label="This week's output"],
+html[data-theme='qwen'] .dashboard-page .latest-milk-card {
+  background: #ffffff;
+  border-color: #dbe3ef;
+  box-shadow: 0 2px 8px rgb(30 41 59 / 0.06);
+}
+
+html[data-theme='qwen'] .dashboard-page .latest-milk-card {
+  margin-top: 16px;
+}
+
+html[data-theme='qwen'] .dashboard-page .latest-milk-card > button {
+  padding: 14px 20px;
+}
+
+html[data-theme='qwen'] .dashboard-page section[aria-label="This week's output"] {
+  padding: 20px;
+  max-width: none;
+}
+
+html[data-theme='qwen'] .dashboard-page section[aria-label="This week's output"] .text-xl {
+  font-size: 1.1rem;
 }
 
 html[data-theme='dark'] .app-navigation-rail {

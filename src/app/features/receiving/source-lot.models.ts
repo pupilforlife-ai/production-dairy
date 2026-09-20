@@ -26,7 +26,14 @@ export interface SourceLotProductionBatch {
   production_round_packing_entries: Array<{
     cases: number;
     loose_packets: number;
-    skus: { code: string } | null;
+    skus: {
+      code: string;
+      unit_weight_g?: number | null;
+      packaging_configs?: {
+        packets_per_case: number | null;
+        nominal_case_weight_kg: number | null;
+      }[];
+    } | null;
   }>;
   transformations: Array<{
     source_quantity: number;
@@ -43,6 +50,7 @@ export interface SkuProductionTotal {
   skuCode: string;
   cases: number;
   loosePackets: number;
+  weightKg: number;
 }
 
 export interface MilkLotProductionSummary {
@@ -150,9 +158,19 @@ export function summarizeMilkLotProduction(lot: SourceLotSummary): MilkLotProduc
   for (const batch of batches) {
     for (const packing of batch.production_round_packing_entries) {
       const skuCode = packing.skus?.code ?? 'Unknown SKU';
-      const total = skuMap.get(skuCode) ?? { skuCode, cases: 0, loosePackets: 0 };
+      const total = skuMap.get(skuCode) ?? { skuCode, cases: 0, loosePackets: 0, weightKg: 0 };
       total.cases += Number(packing.cases);
       total.loosePackets += Number(packing.loose_packets);
+      const packetWeight = Number(packing.skus?.unit_weight_g || 0) / 1000;
+      const configuredPackets = Number(packing.skus?.packaging_configs?.[0]?.packets_per_case || 0);
+      const configuredCaseWeight = Number(
+        packing.skus?.packaging_configs?.[0]?.nominal_case_weight_kg || 0,
+      );
+      const knownCaseWeight = ['MPAN010', 'RPAN010'].includes(skuCode) ? 20 : 0;
+      total.weightKg +=
+        Number(packing.cases) *
+          (configuredCaseWeight || knownCaseWeight || configuredPackets * packetWeight) +
+        Number(packing.loose_packets) * packetWeight;
       skuMap.set(skuCode, total);
     }
 

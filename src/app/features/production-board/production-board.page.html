@@ -26,6 +26,26 @@
       </button>
     </header>
 
+    <nav
+      class="mt-4 flex gap-2 overflow-x-auto border-b border-slate-700 pb-2"
+      aria-label="Production product tabs"
+    >
+      @for (tab of productTabs; track tab.id) {
+        <button
+          class="shrink-0 rounded-lg border px-3 py-2 text-sm font-bold transition-colors"
+          [class.border-emerald-600]="selectedProductTab() === tab.id"
+          [class.bg-emerald-950]="selectedProductTab() === tab.id"
+          [class.text-emerald-300]="selectedProductTab() === tab.id"
+          [class.border-slate-700]="selectedProductTab() !== tab.id"
+          [class.text-slate-300]="selectedProductTab() !== tab.id"
+          type="button"
+          (click)="selectedProductTab.set(tab.id)"
+        >
+          {{ tab.label }}
+        </button>
+      }
+    </nav>
+
     @if (errorMessage()) {
       <p
         class="fixed right-3 top-3 z-50 max-w-md rounded-lg border border-red-800 bg-red-950 px-3 py-2 text-sm text-red-100 shadow-xl"
@@ -124,7 +144,7 @@
             class="overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl"
           >
             <header
-              class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 bg-slate-800/80 px-3 py-2"
+              class="production-shift-header flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 bg-slate-800/80 px-3 py-2"
             >
               <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-sm">
                 <div>
@@ -253,7 +273,7 @@
                       @let creamSummaryData = creamSummary(batch.id);
                       @let ingredientSummaryData = ingredientSummary(batch.id);
                       <tr
-                        class="align-middle even:bg-slate-950/25"
+                        class="production-round-row align-middle even:bg-slate-950/25"
                         [class.opacity-60]="batch.status === 'cancelled'"
                       >
                         <td
@@ -391,7 +411,7 @@
                             </select>
                             @if (batch.products?.variant === 'C/S') {
                               <button
-                                class="mt-1 w-full rounded border px-1 py-0.5 text-[10px] font-bold"
+                                class="production-label-white mt-1 w-full rounded border px-1 py-0.5 text-[10px] font-bold"
                                 [class.border-sky-800]="creamSummaryData.count === 0"
                                 [class.text-sky-300]="creamSummaryData.count === 0"
                                 [class.border-amber-800]="creamSummaryData.count > 0"
@@ -419,6 +439,7 @@
                               !!batch.locked_at ||
                               !!batch.cut_completed_at ||
                               batch.cut_format === 'cling_wrapped' ||
+                              !auth.hasActualRole('owner', 'admin') ||
                               cellBusy(batch, 'process_stage')
                             "
                             [attr.aria-label]="
@@ -457,9 +478,35 @@
                               }
                             }
                           </div>
+                          @let nextStage = nextStageFor(batch);
+                          @let vatChoices = vatChoiceStages(batch);
+                          @if (vatChoices.length) {
+                            <div class="mt-1 grid grid-cols-2 gap-1">
+                              @for (choice of vatChoices; track choice.value) {
+                                <button
+                                  class="production-stage-action rounded border px-1.5 py-1 text-[10px] font-black disabled:cursor-not-allowed disabled:opacity-50"
+                                  type="button"
+                                  [disabled]="!!batch.locked_at || batch.status === 'cancelled' || advancingStage() !== null"
+                                  (click)="advanceToStage(batch, choice)"
+                                >
+                                  {{ advancingStage() === batch.id ? 'Advancing…' : 'Move to ' + choice.label }}
+                                </button>
+                              }
+                            </div>
+                          } @else if (nextStage) {
+                            <button
+                              class="production-stage-action mt-1 w-full rounded border px-1.5 py-1 text-[10px] font-black disabled:cursor-not-allowed disabled:opacity-50"
+                              type="button"
+                              [disabled]="!!batch.locked_at || batch.status === 'cancelled' || advancingStage() !== null"
+                              [attr.aria-label]="'Move round ' + batch.round_number + ' to ' + nextStage.label"
+                              (click)="advanceStage(batch)"
+                            >
+                              {{ advancingStage() === batch.id ? 'Advancing…' : 'Next: ' + nextStage.label }}
+                            </button>
+                          }
                           @if (ingredientSummaryData.componentCount) {
                             <button
-                              class="mt-1 w-full rounded border px-1.5 py-0.5 text-[10px] font-black"
+                              class="production-label-white mt-1 w-full rounded border px-1.5 py-0.5 text-[10px] font-black"
                               [class.border-amber-500]="ingredientSummaryData.hasShortage"
                               [class.bg-amber-950]="ingredientSummaryData.hasShortage"
                               [class.text-amber-200]="ingredientSummaryData.hasShortage"
@@ -477,7 +524,7 @@
                             </button>
                           } @else if (ingredientsDue(batch) && !batch.recipe_version_id) {
                             <button
-                              class="mt-1 w-full rounded border border-red-700 bg-red-950 px-1.5 py-0.5 text-[10px] font-black text-red-200"
+                              class="production-label-white mt-1 w-full rounded border border-red-700 bg-red-950 px-1.5 py-0.5 text-[10px] font-black text-red-200"
                               type="button"
                               (click)="toggleIngredientPanel(batch.id)"
                             >
@@ -577,7 +624,7 @@
                             </button>
                             @if (blockSummaryData.anomalyCount > 0) {
                               <p
-                                class="mt-1 rounded border border-amber-700 bg-amber-950/70 px-1 py-0.5 text-[10px] font-bold text-amber-200"
+                                class="production-label-white mt-1 rounded border border-amber-700 bg-amber-950/70 px-1 py-0.5 text-[10px] font-bold text-amber-200"
                               >
                                 {{ blockSummaryData.anomalyCount }} above-capacity
                                 {{ blockSummaryData.anomalyCount === 1 ? 'anomaly' : 'anomalies' }}
@@ -1094,7 +1141,7 @@
                                     >
                                   </div>
                                   @if (block.weight_kg !== null && block.weight_kg > 13) {
-                                    <span class="mt-2 block text-xs font-black text-amber-200">
+                                    <span class="production-label-white mt-2 block text-xs font-black text-amber-200">
                                       Above press capacity · anomaly recorded
                                     </span>
                                   }

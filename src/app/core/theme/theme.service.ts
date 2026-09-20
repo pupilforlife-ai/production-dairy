@@ -32,7 +32,8 @@ export class ThemeService {
 
   private applyTheme(theme: AppTheme): void {
     this.document.documentElement.dataset['theme'] = theme;
-    this.document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark';
+    this.document.documentElement.style.colorScheme =
+      theme === 'light' || theme === 'qwen' ? 'light' : 'dark';
   }
 
   private readStoredTheme(): AppTheme {

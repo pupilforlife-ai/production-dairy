@@ -54,6 +54,7 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly updatingCell = signal<string | null>(null);
+  readonly advancingStage = signal<string | null>(null);
   readonly updatingBlock = signal<string | null>(null);
   readonly updatingCream = signal<string | null>(null);
   readonly updatingHalloumiOutput = signal<string | null>(null);
@@ -73,6 +74,15 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
   readonly now = signal(new Date());
+  readonly selectedProductTab = signal('all');
+  readonly productTabs = [
+    { id: 'all', label: 'All products' },
+    { id: 'paneer', label: 'Paneer' },
+    { id: 'halloumi', label: 'Halloumi' },
+    { id: 'butter', label: 'Butter' },
+    { id: 'ghee', label: 'Ghee' },
+    { id: 'crumbing', label: 'Crumbing' },
+  ] as const;
 
   readonly stages = PANEER_STAGE_OPTIONS;
   readonly halloumiStages = HALLOUMI_STAGE_OPTIONS;
@@ -248,6 +258,14 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
     field: EditableRoundField,
     value: string | number | null,
   ): Promise<void> {
+    if (
+      field === 'process_stage' &&
+      !this.auth.hasActualRole('owner', 'admin') &&
+      !this.isAllowedWorkerStage(batch, value)
+    ) {
+      this.errorMessage.set('Only the defined next stage or branch choice is available to staff.');
+      return;
+    }
     if (batch.locked_at || batch.status === 'cancelled' || this.isUnchanged(batch, field, value)) {
       return;
     }
@@ -295,6 +313,58 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
       await this.load(false);
     } finally {
       this.updatingCell.set(null);
+    }
+  }
+
+  private isAllowedWorkerStage(
+    batch: ProductionBatchSummary,
+    value: string | number | null,
+  ): boolean {
+    const choices = this.vatChoiceStages(batch).map((stage) => stage.value);
+    const next = this.nextStageFor(batch)?.value;
+    return choices.includes(value as PaneerProcessStage) || next === value;
+  }
+
+  nextStageFor(batch: ProductionBatchSummary): { value: PaneerProcessStage; label: string } | null {
+    if (!this.isHalloumi(batch) && (batch.process_stage === 'vat_1' || batch.process_stage === 'presses')) return null;
+    if (!this.isHalloumi(batch) && (batch.process_stage === 'vat_2' || batch.process_stage === 'vat_3')) {
+      return this.stages.find((stage) => stage.value === 'coagulation') ?? null;
+    }
+    if (!this.isHalloumi(batch) && (batch.process_stage === 'cooling_tank' || batch.process_stage === 'chiller')) {
+      return this.stages.find((stage) => stage.value === 'resting') ?? null;
+    }
+    const stages = this.stagesFor(batch);
+    const index = stages.findIndex((stage) => stage.value === batch.process_stage);
+    return index >= 0 && index < stages.length - 1 ? stages[index + 1] : null;
+  }
+
+  vatChoiceStages(batch: ProductionBatchSummary): ReadonlyArray<{ value: PaneerProcessStage; label: string }> {
+    if (this.isHalloumi(batch)) return [];
+    if (batch.process_stage === 'vat_1') {
+      return this.stages.filter((stage) => stage.value === 'vat_2' || stage.value === 'vat_3');
+    }
+    if (batch.process_stage === 'presses') {
+      return this.stages.filter((stage) => stage.value === 'cooling_tank' || stage.value === 'chiller');
+    }
+    return [];
+  }
+
+  async advanceStage(batch: ProductionBatchSummary): Promise<void> {
+    const next = this.nextStageFor(batch);
+    if (!next || batch.locked_at || batch.status === 'cancelled' || this.advancingStage()) return;
+    await this.advanceToStage(batch, next);
+  }
+
+  async advanceToStage(
+    batch: ProductionBatchSummary,
+    next: { value: PaneerProcessStage; label: string },
+  ): Promise<void> {
+    if (batch.locked_at || batch.status === 'cancelled' || this.advancingStage()) return;
+    this.advancingStage.set(batch.id);
+    try {
+      await this.updateRoundCell(batch, 'process_stage', next.value);
+    } finally {
+      this.advancingStage.set(null);
     }
   }
 
@@ -599,8 +669,18 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
 
   roundsForShift(shiftId: string): ProductionBatchSummary[] {
     return this.batches()
-      .filter((batch) => batch.shift_id === shiftId)
+      .filter(
+        (batch) =>
+          batch.shift_id === shiftId &&
+          (this.selectedProductTab() === 'all' || this.productTabMatches(batch)),
+      )
       .sort((left, right) => left.round_number - right.round_number);
+  }
+
+  private productTabMatches(batch: ProductionBatchSummary): boolean {
+    const tab = this.selectedProductTab();
+    const product = `${batch.products?.code ?? ''} ${batch.products?.name ?? ''} ${batch.products?.variant ?? ''}`.toLowerCase();
+    return product.includes(tab);
   }
 
   packingFor(batchId: string): RoundPackingEntry[] {
@@ -681,7 +761,7 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
     return (
       batch.status !== 'cancelled' &&
       !batch.locked_at &&
-      batch.gross_output_quantity === null &&
+      (batch.gross_output_quantity === null || batch.gross_output_quantity === 0) &&
       !this.hasPacking(batch) &&
       !this.blocksFor(batch.id).some((block) => block.weight_kg !== null) &&
       !this.hasCream(batch.id)

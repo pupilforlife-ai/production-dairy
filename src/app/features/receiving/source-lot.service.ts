@@ -67,7 +67,7 @@ export class SourceLotService {
     const { data: batchData, error: batchError } = await this.supabase
       .from('production_batches')
       .select(
-        'id, parent_source_lot_id, actual_primary_input_quantity, gross_output_quantity, cut_format, status, products(variant), production_round_blocks(weight_kg), production_round_cream_buckets(weight_kg), production_round_packing_entries(cases, loose_packets, skus(code)), transformations!transformations_source_batch_id_fkey(source_quantity, cut_type, transformation_outputs(quantity, output_label, products(code)))',
+        'id, parent_source_lot_id, actual_primary_input_quantity, gross_output_quantity, cut_format, status, products(variant), production_round_blocks(weight_kg), production_round_cream_buckets(weight_kg), production_round_packing_entries(cases, loose_packets, skus(code, unit_weight_g, packaging_configs(packets_per_case, nominal_case_weight_kg))), transformations!transformations_source_batch_id_fkey(source_quantity, cut_type, transformation_outputs(quantity, output_label, products(code)))',
       )
       .in(
         'parent_source_lot_id',

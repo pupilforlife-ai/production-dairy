@@ -1,8 +1,9 @@
-export type AppTheme = 'dark' | 'light' | 'high-contrast';
+export type AppTheme = 'dark' | 'light' | 'qwen' | 'high-contrast';
 
 export const APP_THEMES: ReadonlyArray<{ value: AppTheme; label: string }> = [
   { value: 'dark', label: 'Dark' },
   { value: 'light', label: 'Light' },
+  { value: 'qwen', label: 'Qwen style' },
   { value: 'high-contrast', label: 'High contrast' },
 ];
 

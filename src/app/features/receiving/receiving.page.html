@@ -492,10 +492,16 @@
                                     Cases
                                   </th>
                                   <th
-                                    class="border-b border-slate-800 px-3 py-2 text-right"
+                                    class="border-b border-r border-slate-800 px-3 py-2 text-right"
                                     scope="col"
                                   >
                                     Loose
+                                  </th>
+                                  <th
+                                    class="border-b border-slate-800 px-3 py-2 text-right"
+                                    scope="col"
+                                  >
+                                    Weight
                                   </th>
                                 </tr>
                               </thead>
@@ -513,13 +519,18 @@
                                     >
                                       {{ sku.cases }}
                                     </td>
-                                    <td class="px-3 py-2 text-right font-mono">
+                                    <td
+                                      class="border-r border-slate-800 px-3 py-2 text-right font-mono"
+                                    >
                                       {{ sku.loosePackets }}
+                                    </td>
+                                    <td class="px-3 py-2 text-right font-mono">
+                                      {{ sku.weightKg | number: '1.0-1' }} kg
                                     </td>
                                   </tr>
                                 } @empty {
                                   <tr>
-                                    <td class="px-3 py-3 text-center text-slate-500" colspan="3">
+                                    <td class="px-3 py-3 text-center text-slate-500" colspan="4">
                                       No SKU packing logged yet.
                                     </td>
                                   </tr>

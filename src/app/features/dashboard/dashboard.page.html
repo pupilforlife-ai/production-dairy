@@ -1,5 +1,5 @@
 <app-navigation-rail />
-<main class="ml-16 min-h-screen bg-slate-950 text-slate-100">
+<main class="dashboard-page ml-16 min-h-screen bg-slate-950 text-slate-100">
   <header class="border-b border-slate-800 bg-slate-900 px-5 py-4">
     <div class="mx-auto flex max-w-7xl items-center justify-between gap-4">
       <div>
@@ -27,6 +27,86 @@
       Current production progress and operational summaries appear here.
     </p>
 
+    @if (!loading()) {
+      <section class="mt-8 grid gap-3 sm:grid-cols-2" aria-label="Factory summary">
+        <article class="rounded-2xl border border-blue-900/70 bg-blue-950/40 p-5">
+          <p class="text-xs font-bold uppercase tracking-wider text-blue-300">Milk remaining</p>
+          <p class="mt-2 text-3xl font-black text-blue-100">
+            {{ milkUsage().remaining | number: '1.0-1' }}
+            <span class="text-base font-bold text-blue-300">{{
+              milkLot()?.units_of_measure?.code || 'L'
+            }}</span>
+          </p>
+          <p class="mt-1 text-sm text-blue-200/70">Latest accepted milk lot</p>
+        </article>
+        <article class="rounded-2xl border border-emerald-900/70 bg-emerald-950/40 p-5">
+          <p class="text-xs font-bold uppercase tracking-wider text-emerald-300">
+            Rounds in latest lot
+          </p>
+          <p class="mt-2 text-3xl font-black text-emerald-100">{{ activeRoundCount() }}</p>
+          <p class="mt-1 text-sm text-emerald-200/70">
+            Across {{ shiftSummaries().length }} shifts
+          </p>
+        </article>
+      </section>
+
+      <section class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <article class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          <p class="text-xs font-bold uppercase text-amber-300">Active alerts</p>
+          <p class="mt-2 font-black">No alert feed configured</p>
+        </article>
+        <article class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          <p class="text-xs font-bold uppercase text-cyan-300">Cold chain</p>
+          <p class="mt-2 font-black">Temperature tracking available</p>
+        </article>
+        <article class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          <p class="text-xs font-bold uppercase text-orange-300">Weekly fuel</p>
+          <p class="mt-2 font-black">—</p>
+          <p class="text-sm text-slate-400">Fuel data not configured</p>
+        </article>
+      </section>
+
+      <section class="mt-4">
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="font-bold text-slate-900">Paneer Yield Trend (kg/100L)</h3>
+          <p class="mt-5 text-4xl font-black text-emerald-600">
+            {{ weeklyPaneerYield() | number: '1.0-2' }}
+          </p>
+          <p class="mt-1 text-sm text-slate-500">Current calculated yield from allocated milk</p>
+        </article>
+      </section>
+
+      <section
+        class="mt-4 rounded-2xl border border-slate-800 bg-slate-900 p-5"
+        aria-label="This week's output"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="font-bold">This week’s output</h3>
+            <p class="mt-1 text-sm text-slate-400">Packed output by product.</p>
+          </div>
+        </div>
+        <div class="mt-4 grid gap-3">
+          @for (item of packedOutputByProduct(); track item[0]) {
+            <div class="flex items-center justify-between gap-4">
+              <p class="truncate text-base text-slate-500">{{ item[0] }}</p>
+              <p class="font-mono text-xl font-bold text-slate-900">
+                {{ item[1] | number: '1.0-1' }} kg
+              </p>
+            </div>
+          } @empty {
+            <p class="text-sm text-slate-500">No packed finished stock is currently available.</p>
+          }
+          <div class="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">
+            <p class="font-semibold text-slate-700">Total Yield (Paneer)</p>
+            <p class="text-xl font-black text-emerald-600">
+              {{ weeklyPaneerYield() | number: '1.0-1' }}%
+            </p>
+          </div>
+        </div>
+      </section>
+    }
+
     @if (errorMessage()) {
       <p
         class="mt-6 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-red-200"
@@ -42,7 +122,9 @@
         <div class="mt-6 h-5 rounded-full bg-slate-800"></div>
       </div>
     } @else if (milkLot(); as lot) {
-      <section class="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+      <section
+        class="latest-milk-card mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"
+      >
         <button
           class="block w-full p-5 text-left transition hover:bg-slate-800/60 sm:p-6"
           type="button"
@@ -70,7 +152,7 @@
                 <p class="text-2xl font-black text-emerald-300">
                   {{ milkUsage().percentage | number: '1.0-1' }}%
                 </p>
-                <p class="text-xs text-slate-500">used in production</p>
+                <p class="text-xs text-slate-500">allocated (production + sold)</p>
               </div>
               <svg
                 class="size-6 text-slate-400 transition-transform duration-200"
@@ -89,7 +171,7 @@
           <div
             class="mt-7 h-5 overflow-hidden rounded-full border border-slate-700 bg-slate-950"
             role="progressbar"
-            aria-label="Milk used in production"
+            aria-label="Milk allocated to production and sales"
             aria-valuemin="0"
             aria-valuemax="100"
             [attr.aria-valuenow]="milkUsage().percentage"

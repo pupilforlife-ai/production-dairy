@@ -46,6 +46,25 @@
       }
     </nav>
 
+    <section class="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2">
+      <label class="text-xs font-bold uppercase tracking-wider text-slate-400" for="board-lot-select">
+        Milk lot
+      </label>
+      <select
+        id="board-lot-select"
+        class="min-w-64 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-bold"
+        [value]="selectedSourceLotId() ?? ''"
+        (change)="selectedSourceLotId.set($any($event.target).value || null)"
+      >
+        @for (lot of sourceLots(); track lot.id) {
+          <option [value]="lot.id">
+            {{ lot.lot_code }} · {{ lot.received_at | date: 'd MMM y, HH:mm' }}
+          </option>
+        }
+      </select>
+      <span class="text-xs text-slate-400">Only this lot’s Paneer and Halloumi rounds are shown.</span>
+    </section>
+
     @if (errorMessage()) {
       <p
         class="fixed right-3 top-3 z-50 max-w-md rounded-lg border border-red-800 bg-red-950 px-3 py-2 text-sm text-red-100 shadow-xl"
@@ -139,7 +158,7 @@
       <p class="mt-4 text-sm text-slate-400">Loading live production board…</p>
     } @else {
       <section class="mt-4 grid gap-4">
-        @for (shift of shifts(); track shift.id) {
+        @for (shift of visibleShifts(); track shift.id) {
           <article
             class="overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl"
           >

@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -42,6 +42,7 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
   private timerInterval: ReturnType<typeof setInterval> | undefined;
 
   readonly sourceLots = signal<SourceLotOption[]>([]);
+  readonly selectedSourceLotId = signal<string | null>(null);
   readonly products = signal<ProductOption[]>([]);
   readonly shifts = signal<ShiftSummary[]>([]);
   readonly batches = signal<ProductionBatchSummary[]>([]);
@@ -83,6 +84,10 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
     { id: 'ghee', label: 'Ghee' },
     { id: 'crumbing', label: 'Crumbing' },
   ] as const;
+  readonly visibleShifts = computed(() => {
+    const lotId = this.selectedSourceLotId();
+    return this.shifts().filter((shift) => !lotId || shift.source_lot_id === lotId);
+  });
 
   readonly stages = PANEER_STAGE_OPTIONS;
   readonly halloumiStages = HALLOUMI_STAGE_OPTIONS;
@@ -867,6 +872,12 @@ export class ProductionBoardPage implements OnInit, OnDestroy {
     try {
       const data = await this.boardService.load();
       this.sourceLots.set(data.sourceLots);
+      const currentLotId = this.selectedSourceLotId();
+      this.selectedSourceLotId.set(
+        currentLotId && data.sourceLots.some((lot) => lot.id === currentLotId)
+          ? currentLotId
+          : data.sourceLots[0]?.id ?? null,
+      );
       this.products.set(data.products);
       this.shifts.set(data.shifts);
       this.batches.set(data.batches);
